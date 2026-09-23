@@ -50,6 +50,7 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 .sg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sg-l{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.02em}
 .inl{font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+.inl.bands{font-size:11.5px;line-height:1.4}
 .inl input{width:64px;font:inherit;font-family:var(--f-num);color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:7px;padding:5px 6px;text-align:right}
 .date-chip{margin-left:auto;font-size:12px;color:var(--muted)}
 .date-chip.stale{color:var(--bad);font-weight:700}
@@ -262,7 +263,7 @@ tr:last-child td{border-bottom:0}
         <button id="val-sell" type="button" aria-pressed="true">샵 판매가</button>
         <button id="val-buy" type="button" aria-pressed="false">매입가(되팔 때)</button>
       </div>
-      <label class="inl" id="ratio-wrap" hidden>판매가의 <input id="buy-ratio" type="number" min="10" max="100" step="5" value="60" inputmode="numeric">%</label>
+      <span class="inl bands" id="ratio-wrap" hidden></span>
     </div>
     <div class="sg">
       <span class="sg-l">통화</span>
@@ -313,7 +314,7 @@ tr:last-child td{border-bottom:0}
 
       <div class="foot">
         <h3>데이터 출처와 한계</h3>
-        봉입률은 팬 개봉 조사(수백~2,000박스 표본)의 추정치이며, 사이트마다 차이가 있어 가장 많이 인용된 값을 썼습니다. 이름이 없는 카드(예: “기타 AR”)는 평균 시세로 계산했습니다. 갓팩 구성은 단순화했습니다. 카드·박스 시세는 모두 <b>샵 판매가</b> 기준(2026-09-21~23)입니다. 뽑은 카드를 샵에 팔면 매입가는 보통 판매가의 50~70%입니다. 위의 “카드 가치”를 매입가로 바꾸면 판매가 × 비율로 추정하며, 저가 카드(AR·RR 등)는 실제 매입가가 이보다 더 낮은 경우가 많습니다. 원화는 설정한 환율로 단순 환산한 값입니다.
+        봉입률은 팬 개봉 조사(수백~2,000박스 표본)의 추정치이며, 사이트마다 차이가 있어 가장 많이 인용된 값을 썼습니다. 이름이 없는 카드(예: “기타 AR”)는 평균 시세로 계산했습니다. 갓팩 구성은 단순화했습니다. 카드·박스 시세는 모두 <b>샵 판매가</b> 기준(2026-09-21~23)입니다. 뽑은 카드를 샵에 팔면 매입가는 보통 판매가의 50~70%입니다. 위의 “카드 가치”를 매입가로 바꾸면 가격대별 매입률(조사한 판매가·매입가 약 40쌍 기준: ¥3,000↑ 65%, ¥1,000↑ 55%, ¥500↑ 40%, ¥300↑ 25%, 그 이하 10%)로 추정합니다. 가게·시기마다 차이가 큽니다. 원화는 설정한 환율로 단순 환산한 값입니다.
         <ul>
           <li><a href="https://torecamap.co.jp/column/celebration/" target="_blank" rel="noopener">トレカの地図 · 30th CELEBRATION</a></li>
           <li><a href="https://pokemon-infomation.com/pull-rates-30th/" target="_blank" rel="noopener">ポケゲトちゃんねる · 30th</a></li>
@@ -358,9 +359,12 @@ const money = v => v == null ? '—' : state.ccy === 'krw'
   : '¥' + Math.round(v).toLocaleString('ja-JP');
 const signed = v => (v >= 0 ? '+' : '−') + money(Math.abs(v));
 /* card value: shop sell price, or estimated buyback (sell × ratio) */
-const vf = () => state.valueBasis === 'buy' ? state.buyRatio : 1;
-const val = c => (c.price||0) * vf();
-const valLabel = () => state.valueBasis === 'buy' ? `매입가 ${Math.round(state.buyRatio*100)}%` : '판매가';
+const buyRate = price => { for (const [min, r] of BUY_BANDS) if (price >= min) return r; return 0; };
+const buyValue = price => (price||0) * buyRate(price||0);
+/* card value under the current basis: shop sell price, or estimated buyback by price band */
+const valueOf = price => state.valueBasis === 'buy' ? buyValue(price) : (price||0);
+const val = c => valueOf(c.price);
+const valLabel = () => state.valueBasis === 'buy' ? '매입가(추정)' : '판매가';
 const pct = v => v >= 0.995 ? '100%' : v >= 0.1 ? (v*100).toFixed(1) + '%' : (v*100).toFixed(2) + '%';
 const rnd = () => Math.random();
 const tierOf = c => RAR[c.r].tier;
@@ -371,7 +375,7 @@ function perBoxText(exp){
   const n = 1/exp;
   return '약 ' + (n < 10 ? n.toFixed(1) : Math.round(n).toLocaleString()) + '박스에 1장';
 }
-function avgPrice(p){ const s = p.named.reduce((a,x)=>a+(x[1]||0),0); return (s + (p.n - p.named.length)*(p.other||0)) / p.n; }
+function avgValue(p){ const s = p.named.reduce((a,x)=>a+valueOf(x[1]),0); return (s + (p.n - p.named.length)*valueOf(p.other)) / p.n; }
 function poolLabel(p){ return p.sub ? p.sub : ''; }
 
 /* ---------- generation ---------- */
@@ -428,7 +432,7 @@ function analyze(set){
       const c = g.cards.filter(e => e[0] === id).reduce((a,e) => a + (typeof e[1] === 'string' ? 1 : e[1]), 0);
       if (c){ exp += g.p*c; none *= 1-g.p; }
     }
-    const avg = avgPrice(p);
+    const avg = avgValue(p);
     if (!isFiller(id)) ev += exp*avg;
     rows.push({id, p, exp, pAny: sure ? 1 : 1-none, avg});
   }
@@ -439,10 +443,10 @@ function analyze(set){
 }
 
 /* ---------- state ---------- */
-const state = { set: SETS[0], basis: 'market', valueBasis: 'sell', buyRatio: 0.6, ccy: 'jpy', fx: KRW_PER_JPY, stats: {}, cur: {}, last: null };
+const state = { set: SETS[0], basis: 'market', valueBasis: 'sell', ccy: 'jpy', fx: KRW_PER_JPY, stats: {}, cur: {}, last: null };
 const boxCost = set => state.basis === 'market' ? set.boxPrice : set.packPrice*set.packs;
 const packCost = set => boxCost(set)/set.packs;
-function st(set){ return state.stats[set.id] ||= {packs:0, spent:0, value:0, counts:{}, best:{}, gods:0}; }
+function st(set){ return state.stats[set.id] ||= {packs:0, spent:0, value:0, valueBuy:0, counts:{}, best:{}, gods:0}; }
 function groupCards(cards){
   const m = new Map();
   for (const c of cards){ const k = c.pool + '|' + c.name; const g = m.get(k); if (g) g.n++; else m.set(k, {c, n:1}); }
@@ -454,7 +458,7 @@ function record(set, packs){
     s.packs++; s.spent += pc; if (pk.god) s.gods++;
     for (const c of pk.cards){
       s.counts[c.r] = (s.counts[c.r]||0) + 1;
-      s.value += c.price||0;
+      s.value += c.price||0; s.valueBuy += buyValue(c.price);
       if (tierOf(c) >= 5 && !c.generic){
         const k = c.pool + '|' + c.name;
         (s.best[k] ||= {c, n:0}).n++;
@@ -491,7 +495,7 @@ function renderList(){
 }
 function renderHead(){
   const s = state.set, a = analyze(s), cost = boxCost(s);
-  const ev = a.ev*vf(), ratio = ev / cost;
+  const ev = a.ev, ratio = ev / cost;
   $('#sethead').innerHTML = `
     <div>
       <h2 class="t-ja">${s.ja}</h2>
@@ -522,7 +526,7 @@ function renderRates(){
       <td class="num" data-l="1장 이상">${pct(r.pAny)}</td>
       <td class="num wide" data-l="기대 매수">${r.exp >= 1 ? r.exp.toFixed(1) : r.exp.toFixed(3)} (${perBoxText(r.exp)})</td>
       <td class="num wide" data-l="특정 1종">${perBoxText(r.exp / r.p.n)}</td>
-      <td class="num wide" data-l="평균 가치">${money(r.avg*vf())}</td></tr>`;
+      <td class="num wide" data-l="평균 가치">${money(r.avg)}</td></tr>`;
   }
   $('#rates').innerHTML = h + '</tbody>';
 }
@@ -534,7 +538,7 @@ function renderTargets(){
   }
   opts.sort((x,y) => y.price - x.price);
   $('#target').innerHTML = opts.map(o =>
-    `<option value="${o.id}|${o.name}">${RAR[o.r].label} ${o.name} · ${money(o.price*vf())} · ${perBoxText(o.per)}</option>`).join('');
+    `<option value="${o.id}|${o.name}">${RAR[o.r].label} ${o.name} · ${money(valueOf(o.price))} · ${perBoxText(o.per)}</option>`).join('');
 }
 function renderStats(){
   const s = state.set, x = st(s), a = analyze(s);
@@ -543,7 +547,7 @@ function renderStats(){
     $('#stats').innerHTML = `<p style="color:var(--muted);margin:0">아직 개봉 기록이 없습니다. 위에서 팩이나 박스를 열어 보세요.</p>`;
     return;
   }
-  const value = x.value*vf(), pl = value - x.spent;
+  const value = state.valueBasis === 'buy' ? x.valueBuy : x.value, pl = value - x.spent;
   let h = `<div class="statgrid">
     <div class="stat"><div class="l">개봉</div><div class="v">${x.packs.toLocaleString()}팩 <span style="font-size:12px;color:var(--muted)">(${boxes.toFixed(boxes%1?1:0)}박스)</span></div></div>
     <div class="stat"><div class="l">쓴 돈</div><div class="v">${money(x.spent)}</div></div>
@@ -653,24 +657,24 @@ function hunt(){
   const target = s.pools[id].named.find(x => x[0] === name);
   state.cur[s.id] = null;
   const MAX = 5000;
-  let boxes = 0, found = false, value = 0, packs = 0;
+  let boxes = 0, found = false, value = 0, valueBuy = 0, packs = 0;
   const best = [];
   while (boxes < MAX && !found){
     const b = genBox(s); boxes++;
     record(s, b.packs); packs += b.packs.length;
     for (const pk of b.packs) for (const c of pk.cards){
-      value += c.price||0;
+      value += c.price||0; valueBuy += buyValue(c.price);
       if (c.pool === id && c.name === name) found = true;
       else if (tierOf(c) >= 8) best.push(c);
     }
   }
-  const res = {found, boxes, packs, value, best, id, name, target, MAX};
+  const res = {found, boxes, packs, value, valueBuy, best, id, name, target, MAX};
   setStage(() => renderHunt(res));
   renderStats(); updateBoxBtn(); showStage();
 }
 function renderHunt(res){
   const s = state.set, {found, boxes, packs, best, id, name, target, MAX} = res;
-  const cost = packs*packCost(s), value = res.value*vf();
+  const cost = packs*packCost(s), value = state.valueBasis === 'buy' ? res.valueBuy : res.value;
   const bg = groupCards(best);
   const tc = mk(id, s.pools[id], target[0], target[1]);
   let h = stageHead(found ? `${boxes.toLocaleString()}박스 만에 등장` : `${MAX.toLocaleString()}박스 안에 못 뽑음`,
@@ -704,13 +708,12 @@ function selectSet(id){
 }
 const PREF_KEY = 'boxsim-prefs';
 function savePrefs(){
-  try { localStorage.setItem(PREF_KEY, JSON.stringify({basis:state.basis, valueBasis:state.valueBasis, buyRatio:state.buyRatio, ccy:state.ccy, fx:state.fx})); } catch(e){}
+  try { localStorage.setItem(PREF_KEY, JSON.stringify({basis:state.basis, valueBasis:state.valueBasis, ccy:state.ccy, fx:state.fx})); } catch(e){}
 }
 function loadPrefs(){
   try { const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
     if (p.basis === 'market' || p.basis === 'msrp') state.basis = p.basis;
     if (p.valueBasis === 'sell' || p.valueBasis === 'buy') state.valueBasis = p.valueBasis;
-    if (p.buyRatio > 0 && p.buyRatio <= 1) state.buyRatio = p.buyRatio;
     if (p.ccy === 'jpy' || p.ccy === 'krw') state.ccy = p.ccy;
     if (p.fx > 1 && p.fx < 30) state.fx = p.fx;
   } catch(e){}
@@ -722,7 +725,7 @@ function syncSettings(){
   press('#ccy-jpy', state.ccy === 'jpy'); press('#ccy-krw', state.ccy === 'krw');
   $('#ratio-wrap').hidden = state.valueBasis !== 'buy';
   $('#fx-wrap').hidden = state.ccy !== 'krw';
-  $('#buy-ratio').value = Math.round(state.buyRatio*100);
+  $('#ratio-wrap').innerHTML = '가격대별 매입률 · ' + BUY_BANDS.map(([min, r]) => (min ? money(min) + '↑ ' : '그 이하 ') + Math.round(r*100) + '%').join(' · ');
   $('#fx').value = Math.round(state.fx*100);
 }
 function renderDate(){
@@ -751,7 +754,6 @@ $('#val-sell').addEventListener('click', () => setPref('valueBasis', 'sell'));
 $('#val-buy').addEventListener('click', () => setPref('valueBasis', 'buy'));
 $('#ccy-jpy').addEventListener('click', () => setPref('ccy', 'jpy'));
 $('#ccy-krw').addEventListener('click', () => setPref('ccy', 'krw'));
-$('#buy-ratio').addEventListener('change', e => { const v = +e.target.value; if (v >= 10 && v <= 100) setPref('buyRatio', v/100); else syncSettings(); });
 $('#fx').addEventListener('change', e => { const v = +e.target.value; if (v >= 100 && v <= 3000) setPref('fx', v/100); else syncSettings(); });
 
 loadPrefs(); syncSettings(); renderDate();

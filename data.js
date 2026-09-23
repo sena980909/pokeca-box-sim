@@ -6,6 +6,9 @@
    - topSlots({MUR:.02, SAR:.28}, .10): 개봉 조사의 박스당 확률 그대로, 두 번째 값은 2장 박스 비율 */
 const PRICE_DATE = '2026-09-23';
 const KRW_PER_JPY = 8.7;   // 2026-09-10 기준 100엔 ≈ 870원
+/* 매입가 추정: [샵 판매가 하한(엔), 매입률]. 2026-09 조사한 판매가·매입가 약 40쌍에서 잡은 값.
+   비싼 카드일수록 매입률이 높고, ¥300 미만은 사실상 벌크 취급. */
+const BUY_BANDS = [[3000, .65], [1000, .55], [500, .40], [300, .25], [0, .10]];
 const P = (r, n, named, other, sub) => ({r, n, named: named || [], other: other ?? 0, sub: sub || ''});
 /* rates = per-box odds from opening surveys (already including 2-hit boxes); extra = chance of a 2nd hit.
    Both draws share one distribution scaled so the per-box totals match the survey. SR takes the remainder. */
