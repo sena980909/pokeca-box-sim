@@ -46,8 +46,14 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px}
 .seg button{border:0;background:none;color:var(--muted);padding:6px 12px;border-radius:999px;font-size:13px}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.seg-wrap{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
-.seg-wrap small{color:var(--muted);font-size:11.5px}
+.settings{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;margin:-4px 0 18px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.sg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sg-l{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.02em}
+.inl{font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+.inl input{width:64px;font:inherit;font-family:var(--f-num);color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:7px;padding:5px 6px;text-align:right}
+.date-chip{margin-left:auto;font-size:12px;color:var(--muted)}
+.date-chip.stale{color:var(--bad);font-weight:700}
+.stage.still .card,.stage.still .card.holo::after{animation:none}
 
 .main{display:grid;grid-template-columns:292px minmax(0,1fr);gap:20px;align-items:start}
 
@@ -188,8 +194,13 @@ tr:last-child td{border-bottom:0}
   .brand h1{font-size:26px}
   .brand p{font-size:13px}
   .top{align-items:flex-start;margin-bottom:12px}
-  .seg-wrap{align-items:flex-start}
-  .seg-wrap small{display:none}
+  .settings{padding:10px 12px;gap:10px}
+  .sg{width:100%;justify-content:space-between}
+  .sg-l{min-width:58px}
+  .sg .seg{flex:1}
+  .sg .seg button{flex:1}
+  .inl{width:100%;justify-content:flex-end}
+  .date-chip{margin-left:0}
   .seg button{padding:10px 14px}
   .set-btn{flex:0 0 178px;grid-template-columns:26px 1fr;padding:8px 10px}
   .set-btn .ja{white-space:normal;font-size:12.5px}
@@ -234,16 +245,35 @@ tr:last-child td{border-bottom:0}
   <header class="top">
     <div class="brand">
       <h1>포켓몬카드 <em>박스깡</em> 시뮬레이터</h1>
-      <p>일본판 인기 박스 10종(+번외 5종)의 개봉 조사 봉입률로 팩·박스를 가상 개봉합니다. 시세는 2026년 9월 기준 추정치(엔)입니다.</p>
-    </div>
-    <div class="seg-wrap">
-      <div class="seg" role="group" aria-label="비용 기준">
-        <button id="basis-market" type="button" aria-pressed="true">박스 시세 기준</button>
-        <button id="basis-msrp" type="button" aria-pressed="false">정가 기준</button>
-      </div>
-      <small>개봉 비용 계산에 쓰는 가격</small>
+      <p>일본판 인기 박스 10종(+번외 5종)의 개봉 조사 봉입률로 팩·박스를 가상 개봉합니다.</p>
     </div>
   </header>
+  <div class="settings">
+    <div class="sg">
+      <span class="sg-l">개봉 비용</span>
+      <div class="seg" role="group" aria-label="개봉 비용 기준">
+        <button id="basis-market" type="button" aria-pressed="true">박스 시세</button>
+        <button id="basis-msrp" type="button" aria-pressed="false">정가</button>
+      </div>
+    </div>
+    <div class="sg">
+      <span class="sg-l">카드 가치</span>
+      <div class="seg" role="group" aria-label="카드 가치 기준">
+        <button id="val-sell" type="button" aria-pressed="true">샵 판매가</button>
+        <button id="val-buy" type="button" aria-pressed="false">매입가(되팔 때)</button>
+      </div>
+      <label class="inl" id="ratio-wrap" hidden>판매가의 <input id="buy-ratio" type="number" min="10" max="100" step="5" value="60" inputmode="numeric">%</label>
+    </div>
+    <div class="sg">
+      <span class="sg-l">통화</span>
+      <div class="seg" role="group" aria-label="통화">
+        <button id="ccy-jpy" type="button" aria-pressed="true">엔 ¥</button>
+        <button id="ccy-krw" type="button" aria-pressed="false">원 ₩</button>
+      </div>
+      <label class="inl" id="fx-wrap" hidden>100엔 = <input id="fx" type="number" min="100" max="3000" step="1" value="870" inputmode="numeric">원</label>
+    </div>
+    <div class="date-chip" id="date-chip"></div>
+  </div>
 
   <div class="main">
     <nav class="setlist" id="setlist" aria-label="박스 선택"></nav>
@@ -283,7 +313,7 @@ tr:last-child td{border-bottom:0}
 
       <div class="foot">
         <h3>데이터 출처와 한계</h3>
-        봉입률은 팬 개봉 조사(수백~2,000박스 표본)의 추정치이며, 사이트마다 차이가 있어 가장 많이 인용된 값을 썼습니다. 이름이 없는 카드(예: “기타 AR”)는 평균 시세로 계산했습니다. 갓팩 구성은 단순화했습니다. 카드·박스 시세는 모두 <b>샵 판매가</b> 기준(2026-09-21~23)입니다. 뽑은 카드를 샵에 팔면 매입가는 보통 판매가의 50~70%라, 실제 회수 금액은 표시된 가치보다 낮습니다.
+        봉입률은 팬 개봉 조사(수백~2,000박스 표본)의 추정치이며, 사이트마다 차이가 있어 가장 많이 인용된 값을 썼습니다. 이름이 없는 카드(예: “기타 AR”)는 평균 시세로 계산했습니다. 갓팩 구성은 단순화했습니다. 카드·박스 시세는 모두 <b>샵 판매가</b> 기준(2026-09-21~23)입니다. 뽑은 카드를 샵에 팔면 매입가는 보통 판매가의 50~70%입니다. 위의 “카드 가치”를 매입가로 바꾸면 판매가 × 비율로 추정하며, 저가 카드(AR·RR 등)는 실제 매입가가 이보다 더 낮은 경우가 많습니다. 원화는 설정한 환율로 단순 환산한 값입니다.
         <ul>
           <li><a href="https://torecamap.co.jp/column/celebration/" target="_blank" rel="noopener">トレカの地図 · 30th CELEBRATION</a></li>
           <li><a href="https://pokemon-infomation.com/pull-rates-30th/" target="_blank" rel="noopener">ポケゲトちゃんねる · 30th</a></li>
@@ -309,6 +339,7 @@ tr:last-child td{border-bottom:0}
   </div>
 </div>
 
+<script src="data.js"></script>
 <script>
 /* ---------- rarity meta ---------- */
 const RAR = {
@@ -318,250 +349,18 @@ const RAR = {
   SR:{label:'SR',tier:5}, AR:{label:'AR',tier:4}, ACE:{label:'ACE',tier:3}, RR:{label:'RR',tier:2}, PIKA:{label:'ピカ',tier:1}, EN:{label:'エネ',tier:1}
 };
 const isFiller = r => r === 'PIKA' || r === 'EN';
-const P = (r, n, named, other, sub) => ({r, n, named: named || [], other: other ?? 0, sub: sub || ''});
-/* rates = per-box odds from opening surveys (already including 2-hit boxes); extra = chance of a 2nd hit.
-   Both draws share one distribution scaled so the per-box totals match the survey. SR takes the remainder. */
-function topSlots(rates, extra){
-  const pick = {}; let hi = 0;
-  for (const k in rates){ pick[k] = rates[k]/(1+extra); hi += pick[k]; }
-  pick.SR = 1 - hi;
-  return [{p:1, pick}, {p:extra, pick}];
-}
-
-/* ---------- set data (per box) ---------- */
-const SETS = [
-{ id:'30th', rank:1, ja:'30th CELEBRATION', ko:'30주년 셀레브레이션', code:'30th', release:'2026-09-16',
-  packPrice:360, packs:20, cpp:6, boxPrice:22900,
-  guar:['팩 6장 전부 키라 (키라 5 + 홀로 에너지 1)','SAR 1장 확정','30th 복각 카드 2장','AR 4장 · RR 5장','팩마다 피카츄 키라 1장 (30종)','FUR 약 6박스에 1장','RGB 뮤 약 154박스에 1장'],
-  warn:'발매 1주일 된 세트라 표본이 120~720박스뿐입니다. 봉입률·시세가 크게 바뀔 수 있습니다. AR·복각 카드 일부는 평균 시세로 추정했습니다.',
-  pools:{
-    RGB:P('RGB',3,[['뮤ex (RGB 레드)',570000],['뮤ex (RGB 블루)',510000],['뮤ex (RGB 그린)',460000]]),
-    FUR:P('FUR',2,[['뮤ex',15000],['뮤츠ex',10000]]),
-    SAR:P('SAR',10,[['피카츄ex (밤)',12800],['뮤ex',9700],['피카츄ex (낮)',8700],['팬텀ex',7500],['님피아ex',4200],['뮤츠ex',4200],['지라치ex',3500],['개굴닌자ex',2000],['보만다ex',1200],['뜨아거ex',1100]]),
-    R30:P('R30',30,[['리자몽 Lv.76',30000],['루기아',28000],['팬텀',8500]],900,'복각'),
-    AR:P('AR',20,[],1800),
-    RR:P('RR',10,[],120),
-    PIKA:P('PIKA',30,[],null,'30명 일러스트레이터'),
-    EN:P('EN',8,[],null,'홀로 기본 에너지')
-  },
-  fixed:[['R30',2],['AR',4],['RR',5]], perPack:[['PIKA',1],['EN',1]], filler:'키라 카드<br>(포켓몬)',
-  slots:[{p:1,pick:{SAR:1}},{p:0.17,pick:{FUR:1}},{p:0.0065,pick:{RGB:1}}] },
-
-{ id:'151', rank:2, ja:'ポケモンカード151', ko:'포켓몬 카드 151', code:'sv2a', release:'2023-06-16',
-  packPrice:290, packs:20, cpp:7, boxPrice:58000,
-  guar:['SR 이상 1장 확정 (약 10%는 2장)','AR 3장 · RR 4장','마스터볼 미러 1장','갓팩 약 30박스에 1번'],
-  warn:'절판 세트라 박스 시세가 사이트마다 3만~6만 엔으로 차이가 큽니다. 여기서는 5만 8천 엔으로 잡았습니다.',
-  pools:{
-    UR:P('UR',3,[['뮤ex',12600],['기본 초에너지',2350],['포켓몬 교체',1300]]),
-    SAR:P('SAR',8,[['리자몽ex',72000],['뮤ex',44000],['거북왕ex',25000],['이상해꽃ex',19600],['썬더ex',16800],['후딘ex',9200],['민화의 초대',7800],['비주기의 카리스마',3200]]),
-    SR:P('SR',16,[],900),
-    MB:P('MB',153,[['팬텀',79000],['피카츄',78000],['망나뇽',18900],['고라파덕',17900],['잉어킹',15600]],900,'마스터볼 미러'),
-    AR:P('AR',18,[['피카츄',5230],['파이리',4230]],900),
-    RR:P('RR',12,[],200)
-  },
-  fixed:[['AR',3],['RR',4],['MB',1]],
-  slots:topSlots({UR:.10,SAR:.167},.10),  // + 갓팩 SAR(1/30) = 박스당 20%
-  god:[{p:1/30,label:'갓팩',cards:[['AR',2],['SAR',1]]}] },
-
-{ id:'m2', rank:3, ja:'インフェルノX', ko:'인페르노X', code:'M2', release:'2025-09-26',
-  packPrice:180, packs:30, cpp:5, boxPrice:19000,
-  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스','MUR 약 50박스에 1장'],
-  pools:{
-    MUR:P('MUR',1,[['메가리자몽X ex',150000]]),
-    SAR:P('SAR',6,[['메가리자몽X ex',85000],['오도리도리ex',2800],['빛나',2500],['메가샤크니아ex',1100],['메가이어롭ex',1000],['로토무ex',900]]),
-    SR:P('SR',11,[['메가리자몽X ex',3700],['빛나',1200]],400,'포켓몬·서포트'),
-    SRG:P('SR',6,[],250,'굿즈·스타디움'),
-    AR:P('AR',12,[['팽도리',500]],300),
-    RR:P('RR',8,[],80)
-  },
-  fixed:[['SRG',1],['AR',3],['RR',4]],
-  slots:topSlots({MUR:.02,SAR:.28},.10) },
-
-{ id:'sv8a', rank:4, ja:'テラスタルフェスex', ko:'테라스탈 페스타ex', code:'sv8a', release:'2024-12-06',
-  packPrice:550, packs:10, cpp:10, boxPrice:16000,
-  guar:['포켓몬 SAR 1장 확정','ACE SPEC 1장','마스터볼 미러 약 2박스에 1장','SAR 3장 팩 약 20박스에 1번','이브이 갓팩 약 800박스에 1번'],
-  pools:{
-    UR:P('UR',5,[['피카츄ex',10000],['테라파고스ex',1280],['굽이치는물결ex',880],['오거폰 벽록의가면ex',800],['무쇠잎새ex',785]]),
-    SAR:P('SAR',27,[['블래키ex',65000],['님피아ex',18600],['에브이ex',9000],['리피아ex',8700],['글레이시아ex',8200],['샤미드ex',7900],['쥬피썬더ex',7300],['부스터ex',7200],['이브이ex (223)',6500],['이브이ex (224)',5300]],1500,'포켓몬'),
-    SARS:P('SAR',6,[],1000,'서포트'),
-    SR:P('SR',12,[],500),
-    MB:P('MB',100,[['블래키',19700]],800,'마스터볼 미러'),
-    ACE:P('ACE',8,[],150),
-    RR:P('RR',30,[],80)
-  },
-  fixed:[['SAR',1],['ACE',1],['RR',8]],
-  slots:[{p:.10,pick:{SARS:1}},{p:.20,pick:{SR:1}},{p:.06,pick:{UR:1}},{p:.5,pick:{MB:1}}],
-  god:[{p:1/20,label:'SAR 3장 팩',cards:[['SAR',3]]},
-       {p:1/800,label:'이브이 갓팩',cards:[['SAR','블래키ex'],['SAR','님피아ex'],['SAR','에브이ex'],['SAR','리피아ex'],['SAR','글레이시아ex'],['SAR','샤미드ex'],['SAR','쥬피썬더ex'],['SAR','부스터ex'],['SAR','이브이ex (223)']]}] },
-
-{ id:'sv8', rank:5, ja:'超電ブレイカー', ko:'초전브레이커', code:'sv8', release:'2024-10-18',
-  packPrice:180, packs:30, cpp:5, boxPrice:28000,
-  guar:['SR 이상 1장 확정 (약 10%는 2장)','ACE SPEC 1장','AR 3장 · RR 4장'],
-  pools:{
-    UR:P('UR',3,[['피카츄ex',19900],['밤의 들것',1920],['그래비티 마운틴',1360]]),
-    SAR:P('SAR',6,[['피카츄ex',77000],['밀로틱ex',13100],['삼삼드래ex',4870],['규리의 눈길',3960],['아이앤트ex',2240],['시트론의 기지',1100]]),
-    SR:P('SR',11,[['피카츄ex',7300],['시아노',1540]],400),
-    ACE:P('ACE',3,[],200),
-    AR:P('AR',12,[['레어코일',1600],['카디나르마',840]],350),
-    RR:P('RR',8,[],80)
-  },
-  fixed:[['ACE',1],['AR',3],['RR',4]],
-  slots:topSlots({UR:.094,SAR:.184},.10) },
-
-{ id:'sv10', rank:6, ja:'ロケット団の栄光', ko:'로켓단의 영광', code:'sv10', release:'2025-04-18',
-  packPrice:180, packs:30, cpp:5, boxPrice:23000,
-  guar:['SR 이상 1장 확정 (약 10%는 2장)','AR 3장 · RR 4장'],
-  pools:{
-    UR:P('UR',3,[['로켓단의 뮤츠ex',9400],['로켓단의 크로뱃ex',2100],['재밍 타워',1480]]),
-    SAR:P('SAR',6,[['로켓단의 뮤츠ex',58700],['로켓단의 파이어ex',20400],['로켓단의 니드킹ex',10600],['로켓단의 크로뱃ex',7600],['로켓단의 비주기',3500],['로켓단의 아테나',2950]]),
-    SR:P('SR',13,[['로켓단의 뮤츠ex',4060],['로켓단의 람다',3560],['로켓단의 파이어ex',1370]],500),
-    AR:P('AR',12,[['로켓단의 나옹',2050]],400),
-    RR:P('RR',8,[],80)
-  },
-  fixed:[['AR',3],['RR',4]],
-  slots:topSlots({UR:.0985,SAR:.185},.10) },
-
-{ id:'m2a', rank:7, ja:'MEGAドリームex', ko:'MEGA 드림ex', code:'M2a', release:'2025-11-28',
-  packPrice:550, packs:10, cpp:10, boxPrice:12000,
-  guar:['MA 1장 확정','SR(굿즈) 1장 확정','AR 3장 · RR 4장','약 48%는 SAR·SR·MUR 추가','갓팩 약 50박스에 1번'],
-  warn:'MUR 봉입률은 사이트마다 50~133박스에 1장으로 차이가 큽니다. 여기서는 약 67박스에 1장으로 잡았습니다.',
-  pools:{
-    MUR:P('MUR',1,[['메가망나뇽ex',24000]]),
-    SAR:P('SAR',17,[['메가팬텀ex',40000],['피카츄ex',26000],['메가망나뇽ex',19000],['로켓단의 뮤츠ex',11500],['N의 조로아크ex',5300],['아이리스의 투지',4000],['카나리',3700],['마리의 오롱털ex',3700],['모야모의 찌리배리ex',3500],['성호의 메타그로스ex',3500],['메가눈여아ex',3000],['키치키기스ex',3000],['메가디안시ex',2800],['메가루차불ex',1800],['메가곤율거니ex',1500],['메가저리더프ex',1400],['서퍼',600]]),
-    SR:P('SR',3,[],800,'서포트'),
-    MA:P('MA',10,[['메가리자몽X ex',3800]],1200),
-    SRG:P('SR',6,[],300,'굿즈'),
-    AR:P('AR',20,[],500),
-    RR:P('RR',30,[],80)
-  },
-  fixed:[['MA',1],['SRG',1],['AR',3],['RR',4]],
-  slots:[{p:.48,pick:{MUR:.031,SAR:.76,SR:.209}}],
-  god:[{p:1/50,label:'갓팩',cards:[['AR',1],['MA',5],['SAR',4]]}] },
-
-{ id:'s12a', rank:8, ja:'VSTARユニバース', ko:'VSTAR 유니버스', code:'s12a', release:'2022-12-02',
-  packPrice:550, packs:10, cpp:10, boxPrice:30000,
-  guar:['포켓몬 SAR 1장 확정','에너지 SR 1장','AR 3장','UR 약 10박스에 1장','갓팩 약 50박스에 1번'],
-  warn:'갓팩과 AR 9장 팩의 실제 구성은 여러 종류가 있어 단순화했습니다.',
-  pools:{
-    UR:P('UR',4,[['기라티나VSTAR',31800],['아르세우스VSTAR',18440],['오리진 펄기아VSTAR',11676],['오리진 디아루가VSTAR',11476]]),
-    SAR:P('SAR',25,[['뮤츠VSTAR',14550],['리자몽VSTAR',11840],['리자몽V',6784],['리피아VSTAR',5844],['다크라이VSTAR',5484],['글레이시아VSTAR',4964]],1500,'포켓몬'),
-    SARS:P('SAR',10,[['난천의 패기',4844],['카이',4035]],1500,'서포트'),
-    SR:P('SR',6,[],500,'서포트'),
-    SRE:P('SR',8,[],200,'에너지'),
-    AR:P('AR',37,[['피카츄',47040],['뮤',6384]],700),
-    RR:P('RR',20,[],60,'RR·RRR')
-  },
-  fixed:[['SAR',1],['SRE',1],['AR',3],['RR',9]],
-  slots:[{p:.20,pick:{SARS:1}},{p:.10,pick:{UR:1}},{p:.25,pick:{SR:1}}],
-  god:[{p:.02,label:'갓팩',cards:[['SAR',8],['UR',2]]},{p:.015,label:'AR 9장 팩',cards:[['AR',9],['SAR',1]]}] },
-
-{ id:'sv11b', rank:9, ja:'ブラックボルト', ko:'블랙볼트', code:'sv11B', release:'2025-06-06',
-  packPrice:290, packs:20, cpp:7, boxPrice:23500,
-  guar:['SR 이상 1장 확정','AR 4장 · RR 4장','마스터볼 미러 1장','BWR 약 24박스에 1장'],
-  warn:'BWR 봉입률은 대부분 “2카톤(24박스)에 1장”으로 보지만, 1%로 보는 곳도 있습니다.',
-  pools:{
-    BWR:P('BWR',1,[['제크로무ex',69500]]),
-    SAR:P('SAR',7,[['제크로무ex',25858],['N의 각본',5734],['큐레무ex',4700],['샤로다ex',3770],['메로엣타ex',3675],['게노세크트ex',3184],['몰드류ex',1493]]),
-    SR:P('SR',8,[['N의 각본',1042],['제크로무ex',1042]],400),
-    MB:P('MB',72,[],600,'마스터볼 미러'),
-    AR:P('AR',72,[['두까비',9826],['비크티니',2853],['유니란',2500]],300),
-    RR:P('RR',6,[],100)
-  },
-  fixed:[['AR',4],['RR',4],['MB',1]],
-  slots:topSlots({BWR:.042,SAR:.24},.05) },
-
-{ id:'sv11w', rank:10, ja:'ホワイトフレア', ko:'화이트플레어', code:'sv11W', release:'2025-06-06',
-  packPrice:290, packs:20, cpp:7, boxPrice:24000,
-  guar:['SR 이상 1장 확정','AR 4장 · RR 4장','마스터볼 미러 1장','BWR 약 22박스에 1장'],
-  warn:'BWR 봉입률은 대부분 “2카톤(24박스)에 1장”으로 보지만, 1%로 보는 곳도 있습니다.',
-  pools:{
-    BWR:P('BWR',1,[['레시라무ex',67686]]),
-    SAR:P('SAR',7,[['레시라무ex',24334],['토우코',7150],['삼삼드래ex',5355],['케르디오ex',3885],['탱탱겔ex',2810],['엘풍ex',2434],['버프론ex',1641]]),
-    SR:P('SR',8,[['토우코',2784]],400),
-    MB:P('MB',72,[],600,'마스터볼 미러'),
-    AR:P('AR',72,[['수댕이',5824],['조로아크',2840],['조로아',2828]],300),
-    RR:P('RR',6,[],100)
-  },
-  fixed:[['AR',4],['RR',4],['MB',1]],
-  slots:topSlots({BWR:.045,SAR:.245},.05) },
-
-{ id:'m1l', rank:'+', ja:'メガブレイブ', ko:'메가브레이브', code:'M1L', release:'2025-08-01',
-  packPrice:180, packs:30, cpp:5, boxPrice:8000,
-  guar:['SR(트레이너스) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스'],
-  pools:{
-    MUR:P('MUR',1,[['메가루카리오ex',48900]]),
-    SAR:P('SAR',5,[['릴리에의 결심',23300],['메가루카리오ex',8150],['메가이상해꽃ex',5900],['메가앱솔ex',2950],['마티스의 거래',860]]),
-    SR:P('SR',8,[['릴리에의 결심',7000],['메가루카리오ex',1190],['메가이상해꽃ex',1106]],400,'포켓몬·서포트'),
-    SRG:P('SR',4,[],250,'트레이너스'),
-    AR:P('AR',12,[['이상해씨',1054],['이상해풀',804]],350),
-    RR:P('RR',5,[],80)
-  },
-  fixed:[['SRG',1],['AR',3],['RR',4]],
-  slots:topSlots({MUR:.018,SAR:.286},.10) },
-
-{ id:'m3', rank:'+', ja:'ムニキスゼロ', ko:'무니키스제로', code:'M3', release:'2026-01-23',
-  packPrice:180, packs:30, cpp:5, boxPrice:7100,
-  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스'],
-  pools:{
-    MUR:P('MUR',1,[['메가지가르데ex',24000]]),
-    SAR:P('SAR',6,[['메이의 격려',10400],['나옹ex',9200],['메가지가르데ex',2900],['메가픽시ex',2500],['메가아쿠스타ex',3000],['유카리',1800]]),
-    SR:P('SR',12,[['나옹ex',2600],['메이의 격려',2500]],400,'포켓몬·서포트'),
-    SRG:P('SR',6,[['포켓패드',1000]],250,'굿즈·스타디움'),
-    AR:P('AR',12,[['삐삐',2000],['토게피',1000]],350),
-    RR:P('RR',8,[],80)
-  },
-  fixed:[['SRG',1],['AR',3],['RR',4]],
-  slots:topSlots({MUR:.015,SAR:.29},.10) },
-
-{ id:'m4', rank:'+', ja:'ニンジャスピナー', ko:'닌자스피너', code:'M4', release:'2026-03-13',
-  packPrice:180, packs:30, cpp:5, boxPrice:6800,
-  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스','MUR 약 100박스에 1장'],
-  warn:'MUR 봉입률은 50~111박스에 1장, MUR 시세는 7.5만~11만 엔으로 사이트마다 차이가 큽니다. 중간값으로 잡았습니다.',
-  pools:{
-    MUR:P('MUR',1,[['메가개굴닌자ex',80000]]),
-    SAR:P('SAR',6,[['메가개굴닌자ex',21000],['치라치노ex',3600],['메가드래캄ex',2000],['메가플라엣테ex',1400],['호미카의 연주',1200],['AZ의 안식',1100]]),
-    SR:P('SR',12,[['메가개굴닌자ex',1580],['호미카의 연주',680],['마티에르',680]],450,'포켓몬·서포트'),
-    SRG:P('SR',6,[],250,'굿즈·스타디움'),
-    AR:P('AR',12,[['개구마르',580],['전룡',580],['푸호꼬',580]],400),
-    RR:P('RR',8,[],80)
-  },
-  fixed:[['SRG',1],['AR',3],['RR',4]],
-  slots:topSlots({MUR:.01,SAR:.31},.10) },
-
-{ id:'m5', rank:'+', ja:'アビスアイ', ko:'어비스아이', code:'M5', release:'2026-05-22',
-  packPrice:200, packs:30, cpp:5, boxPrice:6900,
-  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스','MUR 약 80박스에 1장'],
-  pools:{
-    MUR:P('MUR',1,[['메가다크라이ex',50000]]),
-    SAR:P('SAR',6,[['메가다크라이ex',23800],['모르페코ex',4000],['무크',3900],['메가제라오라ex',2600],['메가샹델라ex',2400],['글라디오의 결전',1400]]),
-    SR:P('SR',12,[['이슬의 기운',2200],['무크',2000],['메가다크라이ex',1000]],350,'포켓몬·서포트'),
-    SRG:P('SR',6,[],250,'굿즈'),
-    AR:P('AR',12,[['야도란',800],['콘치',450],['카디나르마',430]],300),
-    RR:P('RR',8,[],80)
-  },
-  fixed:[['SRG',1],['AR',3],['RR',4]],
-  slots:topSlots({MUR:.012,SAR:.27},.10) },
-
-{ id:'m6', rank:'+', ja:'ストームエメラルダ', ko:'스톰에메랄드', code:'M6', release:'2026-07-31',
-  packPrice:200, packs:30, cpp:5, boxPrice:9550,
-  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 11%는 2장 박스','MUR 약 50박스에 1장'],
-  warn:'박스 시세는 9,550엔(トレカの地図)~12,770엔(ポケカ当たり)으로 사이트마다 다릅니다. 조사 표본 크기는 공개되지 않았습니다.',
-  pools:{
-    MUR:P('MUR',1,[['메가레쿠쟈ex',95000]]),
-    SAR:P('SAR',6,[['메가레쿠쟈ex',38000],['라이코ex',5500],['히가나의 신뢰',2300],['메가골루그ex',1200],['메가갑주무사ex',1200],['기리',700]]),
-    SR:P('SR',12,[['메가레쿠쟈ex',3100],['파이어로ex',1100],['히가나의 신뢰',780]],400,'포켓몬·서포트'),
-    SRG:P('SR',6,[],250,'굿즈·에너지'),
-    AR:P('AR',12,[['그란돈',1300],['가이오가',1300],['켈리몬',1050]],400),
-    RR:P('RR',8,[],80)
-  },
-  fixed:[['SRG',1],['AR',3],['RR',4]],
-  slots:topSlots({MUR:.0195,SAR:.31},.11) }
-];
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
-const yen = v => v == null ? '—' : '¥' + Math.round(v).toLocaleString('ja-JP');
-const signed = v => (v >= 0 ? '+' : '−') + '¥' + Math.abs(Math.round(v)).toLocaleString('ja-JP');
+/* money: every amount is stored in yen and converted only for display */
+const money = v => v == null ? '—' : state.ccy === 'krw'
+  ? Math.round(v*state.fx).toLocaleString('ko-KR') + '원'
+  : '¥' + Math.round(v).toLocaleString('ja-JP');
+const signed = v => (v >= 0 ? '+' : '−') + money(Math.abs(v));
+/* card value: shop sell price, or estimated buyback (sell × ratio) */
+const vf = () => state.valueBasis === 'buy' ? state.buyRatio : 1;
+const val = c => (c.price||0) * vf();
+const valLabel = () => state.valueBasis === 'buy' ? `매입가 ${Math.round(state.buyRatio*100)}%` : '판매가';
 const pct = v => v >= 0.995 ? '100%' : v >= 0.1 ? (v*100).toFixed(1) + '%' : (v*100).toFixed(2) + '%';
 const rnd = () => Math.random();
 const tierOf = c => RAR[c.r].tier;
@@ -640,7 +439,7 @@ function analyze(set){
 }
 
 /* ---------- state ---------- */
-const state = { set: SETS[0], basis: 'market', stats: {}, cur: {} };
+const state = { set: SETS[0], basis: 'market', valueBasis: 'sell', buyRatio: 0.6, ccy: 'jpy', fx: KRW_PER_JPY, stats: {}, cur: {}, last: null };
 const boxCost = set => state.basis === 'market' ? set.boxPrice : set.packPrice*set.packs;
 const packCost = set => boxCost(set)/set.packs;
 function st(set){ return state.stats[set.id] ||= {packs:0, spent:0, value:0, counts:{}, best:{}, gods:0}; }
@@ -663,7 +462,7 @@ function record(set, packs){
     }
   }
 }
-const packValue = pk => pk.cards.reduce((a,c)=>a+(c.price||0),0);
+const packValue = pk => pk.cards.reduce((a,c)=>a+val(c),0);
 
 /* ---------- render: card ---------- */
 function cardHTML(c, i, jackTier, count){
@@ -672,7 +471,7 @@ function cardHTML(c, i, jackTier, count){
   const pool = state.set.pools[c.pool];
   const sub = c.generic ? (pool ? `${pool.n - pool.named.length}종 중 1장` : '') : (c.r === 'MB' ? '마스터볼 미러' : (c.sub || ''));
   return `<div class="${cls.join(' ')}" style="--d:${i*110}ms"><span class="c-r">${RAR[c.r].label}</span>${count > 1 ? `<span class="c-x">×${count}</span>` : ''}
-    <span class="c-b"><span class="c-n">${c.name}</span>${sub ? `<span class="c-s">${sub}</span>` : ''}<span class="c-p">${c.price ? yen(c.price) : (isFiller(c.r) ? '시세 미반영' : '—')}</span></span></div>`;
+    <span class="c-b"><span class="c-n">${c.name}</span>${sub ? `<span class="c-s">${sub}</span>` : ''}<span class="c-p">${c.price ? money(val(c)) : (isFiller(c.r) ? '시세 미반영' : '—')}</span></span></div>`;
 }
 const chip = r => `<span class="rchip r-${r}">${RAR[r].label}</span>`;
 
@@ -685,37 +484,37 @@ function renderList(){
     h += `<button type="button" class="set-btn" data-id="${s.id}" aria-pressed="${s === state.set}">
       <span class="rk ${typeof s.rank === 'number' && s.rank <= 3 ? 'top3' : ''}">${s.rank}</span>
       <span class="ja">${s.ja}</span><span class="ko">${s.ko}</span>
-      <span class="bp num">${yen(s.boxPrice)}</span></button>`;
+      <span class="bp num">${money(s.boxPrice)}</span></button>`;
   });
   el.innerHTML = h;
   el.querySelectorAll('.set-btn').forEach(b => b.addEventListener('click', () => selectSet(b.dataset.id)));
 }
 function renderHead(){
   const s = state.set, a = analyze(s), cost = boxCost(s);
-  const ratio = a.ev / cost;
+  const ev = a.ev*vf(), ratio = ev / cost;
   $('#sethead').innerHTML = `
     <div>
       <h2 class="t-ja">${s.ja}</h2>
       <div class="t-ko">${s.ko} · <span class="num">${s.code}</span></div>
       <div class="meta">
         <span>발매 <b class="num">${s.release}</b></span>
-        <span>팩 <b class="num">${yen(s.packPrice)}</b></span>
+        <span>팩 <b class="num">${money(s.packPrice)}</b></span>
         <span>구성 <b>${s.packs}팩 × ${s.cpp}장</b></span>
-        <span>정가 <b class="num">${yen(s.packPrice*s.packs)}</b></span>
-        <span>박스 시세 <b class="num">${yen(s.boxPrice)}</b></span>
+        <span>정가 <b class="num">${money(s.packPrice*s.packs)}</b></span>
+        <span>박스 시세 <b class="num">${money(s.boxPrice)}</b></span>
       </div>
       <div class="guar">${s.guar.map(g => `<span>${g}</span>`).join('')}</div>
     </div>
     <div class="ev">
-      <div><div class="lbl">박스 1개 기대값 (카드 판매가 합)</div><div class="big">${yen(a.ev)}</div></div>
-      <div class="row"><span>${state.basis === 'market' ? '박스 시세' : '정가'}</span><span class="num">${yen(cost)}</span></div>
+      <div><div class="lbl">박스 1개 기대값 · ${valLabel()} 기준</div><div class="big">${money(ev)}</div></div>
+      <div class="row"><span>${state.basis === 'market' ? '박스 시세' : '정가'}</span><span class="num">${money(cost)}</span></div>
       <div class="row"><span>회수율</span><span class="num ${ratio >= 1 ? 'good' : 'bad'}">${(ratio*100).toFixed(0)}%</span></div>
     </div>
     ${s.warn ? `<div class="warn">${s.warn}</div>` : ''}`;
 }
 function renderRates(){
   const s = state.set, a = analyze(s);
-  let h = `<thead><tr><th>등급</th><th>종류</th><th>박스에 1장 이상</th><th>박스당 기대 매수</th><th>특정 1종</th><th>평균 시세</th></tr></thead><tbody>`;
+  let h = `<thead><tr><th>등급</th><th>종류</th><th>박스에 1장 이상</th><th>박스당 기대 매수</th><th>특정 1종</th><th>평균 가치</th></tr></thead><tbody>`;
   for (const r of a.rows){
     if (isFiller(r.id)) continue;
     h += `<tr><td>${chip(r.p.r)} <span class="sub" style="color:var(--muted);font-size:11.5px">${poolLabel(r.p)}</span></td>
@@ -723,7 +522,7 @@ function renderRates(){
       <td class="num" data-l="1장 이상">${pct(r.pAny)}</td>
       <td class="num wide" data-l="기대 매수">${r.exp >= 1 ? r.exp.toFixed(1) : r.exp.toFixed(3)} (${perBoxText(r.exp)})</td>
       <td class="num wide" data-l="특정 1종">${perBoxText(r.exp / r.p.n)}</td>
-      <td class="num wide" data-l="평균 시세">${yen(r.avg)}</td></tr>`;
+      <td class="num wide" data-l="평균 가치">${money(r.avg*vf())}</td></tr>`;
   }
   $('#rates').innerHTML = h + '</tbody>';
 }
@@ -735,7 +534,7 @@ function renderTargets(){
   }
   opts.sort((x,y) => y.price - x.price);
   $('#target').innerHTML = opts.map(o =>
-    `<option value="${o.id}|${o.name}">${RAR[o.r].label} ${o.name} · ${yen(o.price)} · ${perBoxText(o.per)}</option>`).join('');
+    `<option value="${o.id}|${o.name}">${RAR[o.r].label} ${o.name} · ${money(o.price*vf())} · ${perBoxText(o.per)}</option>`).join('');
 }
 function renderStats(){
   const s = state.set, x = st(s), a = analyze(s);
@@ -744,12 +543,12 @@ function renderStats(){
     $('#stats').innerHTML = `<p style="color:var(--muted);margin:0">아직 개봉 기록이 없습니다. 위에서 팩이나 박스를 열어 보세요.</p>`;
     return;
   }
-  const pl = x.value - x.spent;
+  const value = x.value*vf(), pl = value - x.spent;
   let h = `<div class="statgrid">
     <div class="stat"><div class="l">개봉</div><div class="v">${x.packs.toLocaleString()}팩 <span style="font-size:12px;color:var(--muted)">(${boxes.toFixed(boxes%1?1:0)}박스)</span></div></div>
-    <div class="stat"><div class="l">쓴 돈</div><div class="v">${yen(x.spent)}</div></div>
-    <div class="stat"><div class="l">뽑은 카드 가치</div><div class="v">${yen(x.value)}</div></div>
-    <div class="stat"><div class="l">손익 (회수율)</div><div class="v ${pl >= 0 ? 'good' : 'bad'}">${signed(pl)} <span style="font-size:12px">${(x.value/x.spent*100).toFixed(0)}%</span></div></div>
+    <div class="stat"><div class="l">쓴 돈</div><div class="v">${money(x.spent)}</div></div>
+    <div class="stat"><div class="l">뽑은 카드 가치 · ${valLabel()}</div><div class="v">${money(value)}</div></div>
+    <div class="stat"><div class="l">손익 (회수율)</div><div class="v ${pl >= 0 ? 'good' : 'bad'}">${signed(pl)} <span style="font-size:12px">${(value/x.spent*100).toFixed(0)}%</span></div></div>
   </div>`;
   h += `<div class="vs">`;
   const rs = Object.keys(a.byR).filter(r => !isFiller(r)).sort((p,q) => RAR[q].tier - RAR[p].tier);
@@ -762,7 +561,7 @@ function renderStats(){
   const best = Object.values(x.best).sort((a,b) => b.c.price - a.c.price).slice(0, 10);
   if (best.length){
     h += `<div style="font-size:12px;font-weight:700;margin-bottom:6px">베스트 풀</div><div class="best">` +
-      best.map(g => `<div>${chip(g.c.r)}<span class="nm">${g.c.name}${g.n > 1 ? ` <span style="color:var(--muted)">×${g.n}</span>` : ''}</span><span class="num">${yen(g.c.price)}</span></div>`).join('') + `</div>`;
+      best.map(g => `<div>${chip(g.c.r)}<span class="nm">${g.c.name}${g.n > 1 ? ` <span style="color:var(--muted)">×${g.n}</span>` : ''}</span><span class="num">${money(val(g.c))}</span></div>`).join('') + `</div>`;
   }
   $('#stats').innerHTML = h;
 }
@@ -777,7 +576,7 @@ function renderPack(pk, n, total){
   const v = packValue(pk);
   $('#stage').innerHTML = stageHead('팩 개봉', `현재 박스 ${n} / ${total}팩째`, pk.god) +
     `<div class="cards lg">${common}${pk.cards.map((c,i) => cardHTML(c, i + (pk.common?1:0))).join('')}</div>
-     <div class="sumline"><span>이 팩 카드 가치 <b>${yen(v)}</b></span><span>팩 1개 비용 <b>${yen(packCost(s))}</b> <small>(${state.basis === 'market' ? '박스 시세' : '정가'} ÷ ${s.packs})</small></span>
+     <div class="sumline"><span>이 팩 카드 가치 <b>${money(v)}</b></span><span>팩 1개 비용 <b>${money(packCost(s))}</b> <small>(${state.basis === 'market' ? '박스 시세' : '정가'} ÷ ${s.packs})</small></span>
      <span>차이 <b class="${v - packCost(s) >= 0 ? 'pos' : 'neg'}">${signed(v - packCost(s))}</b></span></div>`;
 }
 function lowChips(cards){
@@ -788,7 +587,7 @@ function lowChips(cards){
 function renderBoxes(results, sample){
   const s = state.set, n = results.length;
   const all = results.flatMap(b => b.packs.flatMap(p => p.cards));
-  const value = all.reduce((a,c)=>a+(c.price||0),0);
+  const value = all.reduce((a,c)=>a+val(c),0);
   const packsOpened = results.reduce((a,b)=>a+b.packs.length,0);
   const cost = packsOpened*packCost(s);
   const gods = results.filter(b => b.god).map(b => b.god);
@@ -814,12 +613,12 @@ function renderBoxes(results, sample){
     if (n <= 10){
       h += `<h4>박스별 결과</h4><div class="boxrows">` + results.map((b,i) => {
         const cs = b.packs.flatMap(p => p.cards); const top = cs.slice().sort((x,y)=>(y.price||0)-(x.price||0))[0];
-        const v = cs.reduce((a,c)=>a+(c.price||0),0);
-        return `<div class="boxrow"><span class="num">#${i+1}</span><span class="nm">${chip(top.r)} ${top.name}${b.god ? ` <span class="god-tag">${b.god}</span>` : ''}</span><span class="num">${yen(v)}</span></div>`;
+        const v = cs.reduce((a,c)=>a+val(c),0);
+        return `<div class="boxrow"><span class="num">#${i+1}</span><span class="nm">${chip(top.r)} ${top.name}${b.god ? ` <span class="god-tag">${b.god}</span>` : ''}</span><span class="num">${money(v)}</span></div>`;
       }).join('') + `</div>`;
     }
   }
-  h += `<div class="sumline"><span>카드 가치 합계 <b>${yen(value)}</b></span><span>비용 <b>${yen(cost)}</b></span>
+  h += `<div class="sumline"><span>카드 가치 합계 <b>${money(value)}</b></span><span>비용 <b>${money(cost)}</b></span>
     <span>손익 <b class="${value - cost >= 0 ? 'pos' : 'neg'}">${signed(value - cost)}</b></span></div>`;
   $('#stage').innerHTML = h;
 }
@@ -831,7 +630,8 @@ function openPack(){
   if (!cb || cb.i >= cb.box.packs.length) cb = state.cur[s.id] = {box: genBox(s), i: 0};
   const pk = cb.box.packs[cb.i++];
   record(s, [pk]);
-  renderPack(pk, cb.i, s.packs);
+  const n = cb.i;
+  setStage(() => renderPack(pk, n, s.packs));
   renderStats(); updateBoxBtn(); showStage();
 }
 function openBoxes(n){
@@ -844,7 +644,7 @@ function openBoxes(n){
   }
   state.cur[s.id] = null;
   while (results.length < n){ const b = genBox(s); record(s, b.packs); results.push(b); }
-  renderBoxes(results, false);
+  setStage(() => renderBoxes(results, false));
   renderStats(); updateBoxBtn(); showStage();
 }
 function hunt(){
@@ -864,18 +664,25 @@ function hunt(){
       else if (tierOf(c) >= 8) best.push(c);
     }
   }
-  const cost = packs*packCost(s);
+  const res = {found, boxes, packs, value, best, id, name, target, MAX};
+  setStage(() => renderHunt(res));
+  renderStats(); updateBoxBtn(); showStage();
+}
+function renderHunt(res){
+  const s = state.set, {found, boxes, packs, best, id, name, target, MAX} = res;
+  const cost = packs*packCost(s), value = res.value*vf();
   const bg = groupCards(best);
   const tc = mk(id, s.pools[id], target[0], target[1]);
   let h = stageHead(found ? `${boxes.toLocaleString()}박스 만에 등장` : `${MAX.toLocaleString()}박스 안에 못 뽑음`,
     `${RAR[tc.r].label} ${name} 노리기 · ${packs.toLocaleString()}팩`);
   h += `<div class="cards lg" style="max-width:420px">${cardHTML(tc, 0, 4)}</div>`;
   if (bg.length) h += `<h4>그동안 나온 SAR 이상 (총 ${best.length}장, ${bg.length}종)</h4><div class="cards">${bg.slice(0,12).map((g,i)=>cardHTML(g.c, i*0.4 + 2, 8, g.n)).join('')}</div>`;
-  h += `<div class="sumline"><span>비용 <b>${yen(cost)}</b></span><span>뽑은 카드 가치 합계 <b>${yen(value)}</b></span>
+  h += `<div class="sumline"><span>비용 <b>${money(cost)}</b></span><span>뽑은 카드 가치 합계 <b>${money(value)}</b></span>
     <span>손익 <b class="${value - cost >= 0 ? 'pos' : 'neg'}">${signed(value - cost)}</b></span></div>`;
   $('#stage').innerHTML = h;
-  renderStats(); updateBoxBtn(); showStage();
 }
+/* the stage remembers how it was drawn, so a settings change can redraw it without re-animating */
+function setStage(draw){ state.last = draw; $('#stage').classList.remove('still'); draw(); }
 function showStage(){
   const top = $('#stage').getBoundingClientRect().top;
   if (top < 0 || top > innerHeight*0.75){
@@ -887,19 +694,50 @@ function updateBoxBtn(){
   const s = state.set, cb = state.cur[s.id];
   const rest = cb && cb.i > 0 && cb.i < cb.box.packs.length ? cb.box.packs.length - cb.i : 0;
   $('#b-box').innerHTML = rest ? `남은 ${rest}팩 열기` : '박스 1개';
-  $('#b-pack').innerHTML = `팩 1개 열기 <small>${yen(packCost(s))}</small>`;
+  $('#b-pack').innerHTML = `팩 1개 열기 <small>${money(packCost(s))}</small>`;
 }
 function selectSet(id){
   state.set = SETS.find(s => s.id === id);
   renderList(); renderHead(); renderRates(); renderTargets(); renderStats(); updateBoxBtn();
-  renderBoxes([genBox(state.set)], true);
+  const sample = genBox(state.set);
+  setStage(() => renderBoxes([sample], true));
 }
-function setBasis(b){
-  state.basis = b;
-  $('#basis-market').setAttribute('aria-pressed', b === 'market');
-  $('#basis-msrp').setAttribute('aria-pressed', b === 'msrp');
-  renderHead(); updateBoxBtn();
+const PREF_KEY = 'boxsim-prefs';
+function savePrefs(){
+  try { localStorage.setItem(PREF_KEY, JSON.stringify({basis:state.basis, valueBasis:state.valueBasis, buyRatio:state.buyRatio, ccy:state.ccy, fx:state.fx})); } catch(e){}
 }
+function loadPrefs(){
+  try { const p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+    if (p.basis === 'market' || p.basis === 'msrp') state.basis = p.basis;
+    if (p.valueBasis === 'sell' || p.valueBasis === 'buy') state.valueBasis = p.valueBasis;
+    if (p.buyRatio > 0 && p.buyRatio <= 1) state.buyRatio = p.buyRatio;
+    if (p.ccy === 'jpy' || p.ccy === 'krw') state.ccy = p.ccy;
+    if (p.fx > 1 && p.fx < 30) state.fx = p.fx;
+  } catch(e){}
+}
+function syncSettings(){
+  const press = (id, on) => $(id).setAttribute('aria-pressed', on);
+  press('#basis-market', state.basis === 'market'); press('#basis-msrp', state.basis === 'msrp');
+  press('#val-sell', state.valueBasis === 'sell'); press('#val-buy', state.valueBasis === 'buy');
+  press('#ccy-jpy', state.ccy === 'jpy'); press('#ccy-krw', state.ccy === 'krw');
+  $('#ratio-wrap').hidden = state.valueBasis !== 'buy';
+  $('#fx-wrap').hidden = state.ccy !== 'krw';
+  $('#buy-ratio').value = Math.round(state.buyRatio*100);
+  $('#fx').value = Math.round(state.fx*100);
+}
+function renderDate(){
+  const days = Math.floor((Date.now() - new Date(PRICE_DATE + 'T00:00:00+09:00')) / 864e5);
+  const el = $('#date-chip');
+  el.classList.toggle('stale', days > 30);
+  el.textContent = `시세 기준일 ${PRICE_DATE}` + (days > 0 ? ` · ${days}일 전` : ' · 오늘') + (days > 30 ? ' — 시세가 오래됐습니다' : '');
+}
+/* redraw every money figure after a settings change */
+function applySettings(){
+  syncSettings(); savePrefs();
+  renderList(); renderHead(); renderRates(); renderTargets(); renderStats(); updateBoxBtn();
+  if (state.last){ $('#stage').classList.add('still'); state.last(); }
+}
+function setPref(k, v){ state[k] = v; applySettings(); }
 
 $('#b-pack').addEventListener('click', openPack);
 $('#b-box').addEventListener('click', () => openBoxes(1));
@@ -907,9 +745,16 @@ $('#b-10').addEventListener('click', () => openBoxes(10));
 $('#b-100').addEventListener('click', () => openBoxes(100));
 $('#b-hunt').addEventListener('click', hunt);
 $('#b-reset').addEventListener('click', () => { delete state.stats[state.set.id]; state.cur[state.set.id] = null; renderStats(); updateBoxBtn(); });
-$('#basis-market').addEventListener('click', () => setBasis('market'));
-$('#basis-msrp').addEventListener('click', () => setBasis('msrp'));
+$('#basis-market').addEventListener('click', () => setPref('basis', 'market'));
+$('#basis-msrp').addEventListener('click', () => setPref('basis', 'msrp'));
+$('#val-sell').addEventListener('click', () => setPref('valueBasis', 'sell'));
+$('#val-buy').addEventListener('click', () => setPref('valueBasis', 'buy'));
+$('#ccy-jpy').addEventListener('click', () => setPref('ccy', 'jpy'));
+$('#ccy-krw').addEventListener('click', () => setPref('ccy', 'krw'));
+$('#buy-ratio').addEventListener('change', e => { const v = +e.target.value; if (v >= 10 && v <= 100) setPref('buyRatio', v/100); else syncSettings(); });
+$('#fx').addEventListener('change', e => { const v = +e.target.value; if (v >= 100 && v <= 3000) setPref('fx', v/100); else syncSettings(); });
 
+loadPrefs(); syncSettings(); renderDate();
 selectSet(SETS[0].id);
 </script>
 </body>
