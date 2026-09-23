@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>박스깡 시뮬레이터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Dela+Gothic+One&family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#ECEEF4; --surface:#FFFFFF; --surface2:#F4F5FA; --ink:#17182B; --muted:#5D6079; --line:#D8DBE7;
+  --accent:#D7263D; --accent-ink:#FFFFFF; --good:#1B8454; --bad:#C62839;
+  --mat:#1B2340; --mat2:#121831; --mat-ink:#E8ECF8; --mat-muted:#9AA3C4; --mat-line:#2E3963;
+  --f-ko:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  --f-disp:'Black Han Sans','Noto Sans KR','Malgun Gothic',sans-serif;
+  --f-ja:'Dela Gothic One','Hiragino Sans','Yu Gothic','Noto Sans KR',sans-serif;
+  --f-num:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E0F1C; --surface:#181A2E; --surface2:#1F2238; --ink:#ECEDF6; --muted:#A0A3BE; --line:#2D3050;
+    --accent:#FF4D5E; --accent-ink:#1A0508; --good:#3CCB84; --bad:#FF6B78;
+    --mat:#0B1024; --mat2:#070B1A; --mat-line:#232C52;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E0F1C; --surface:#181A2E; --surface2:#1F2238; --ink:#ECEDF6; --muted:#A0A3BE; --line:#2D3050;
+  --accent:#FF4D5E; --accent-ink:#1A0508; --good:#3CCB84; --bad:#FF6B78;
+  --mat:#0B1024; --mat2:#070B1A; --mat-line:#232C52;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-ko);font-size:14px;line-height:1.55;padding-inline:16px}
+.wrap{max-width:1200px;margin:0 auto;padding-block:22px 56px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:18px}
+.brand h1{font-family:var(--f-disp);font-weight:400;font-size:clamp(28px,4.4vw,40px);line-height:1.05;margin:0;letter-spacing:.01em}
+.brand h1 em{font-style:normal;color:var(--accent)}
+.brand p{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px}
+.seg button{border:0;background:none;color:var(--muted);padding:6px 12px;border-radius:999px;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg-wrap{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.seg-wrap small{color:var(--muted);font-size:11.5px}
+
+.main{display:grid;grid-template-columns:292px minmax(0,1fr);gap:20px;align-items:start}
+
+/* set list */
+.setlist{display:flex;flex-direction:column;gap:6px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+.setlist h2{font-size:11.5px;letter-spacing:.12em;color:var(--muted);margin:0 0 4px;font-weight:700}
+.set-btn{display:grid;grid-template-columns:34px 1fr auto;gap:2px 10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 11px}
+.set-btn:hover{border-color:var(--muted)}
+.set-btn .rk{grid-row:span 2;font-family:var(--f-ja);font-size:20px;color:var(--muted);text-align:center}
+.set-btn .ja{font-family:var(--f-ja);font-size:13.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set-btn .ko{font-size:11.5px;color:var(--muted);grid-column:2}
+.set-btn .bp{grid-row:1 / span 2;grid-column:3;font-size:11.5px;color:var(--muted);text-align:right}
+.set-btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.set-btn[aria-pressed="true"] .ko,.set-btn[aria-pressed="true"] .bp,.set-btn[aria-pressed="true"] .rk{color:var(--bg);opacity:.75}
+.set-btn .rk.top3{color:var(--accent)}
+.set-btn[aria-pressed="true"] .rk.top3{color:var(--accent);opacity:1}
+.list-sep{font-size:11px;color:var(--muted);margin:8px 0 0;letter-spacing:.08em}
+
+/* set head */
+.panel{display:flex;flex-direction:column;gap:16px;min-width:0}
+.sethead{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px 24px}
+.sethead .t-ja{font-family:var(--f-ja);font-size:clamp(22px,3vw,30px);line-height:1.15;margin:0;text-wrap:balance}
+.sethead .t-ko{color:var(--muted);margin:2px 0 10px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:500}
+.guar{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.guar span{font-size:12px;border:1px solid var(--line);background:var(--surface2);border-radius:6px;padding:3px 8px}
+.ev{display:flex;flex-direction:column;gap:8px;min-width:190px;border-left:1px solid var(--line);padding-left:20px}
+.ev .lbl{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.ev .big{font-family:var(--f-num);font-size:26px;font-weight:600;line-height:1.1}
+.ev .row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}
+.warn{grid-column:1 / -1;font-size:12px;color:var(--muted);background:var(--surface2);border-radius:8px;padding:7px 10px}
+
+/* controls + stage */
+.play{background:var(--mat);color:var(--mat-ink);border-radius:16px;overflow:hidden;border:1px solid var(--mat-line)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;padding:14px;border-bottom:1px solid var(--mat-line);background:var(--mat2);align-items:center}
+.btn{border:1px solid var(--mat-line);background:#ffffff10;color:var(--mat-ink);border-radius:9px;padding:9px 14px;font-weight:700;font-size:13.5px}
+.btn:hover{background:#ffffff1f}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn small{font-weight:400;opacity:.75;margin-left:4px;font-family:var(--f-num)}
+.hunt{display:flex;gap:8px;flex:1 1 320px;min-width:0;justify-content:flex-end}
+.hunt select{min-width:0;flex:1;max-width:340px;background:var(--mat);color:var(--mat-ink);border:1px solid var(--mat-line);border-radius:9px;padding:8px}
+.stage{padding:16px;min-height:300px}
+.stage-head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin-bottom:12px}
+.stage-head h3{margin:0;font-family:var(--f-disp);font-weight:400;font-size:20px}
+.stage-head .sub{color:var(--mat-muted);font-size:12.5px}
+.god-tag{background:linear-gradient(90deg,#ff6b8a,#ffc46b,#6bffb0,#6bc8ff,#b18cff);color:#15101f;font-weight:700;border-radius:5px;padding:1px 8px;font-size:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px}
+.cards.lg{grid-template-columns:repeat(auto-fill,minmax(128px,1fr))}
+.sumline{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--mat-line);font-size:13px;color:var(--mat-muted)}
+.sumline b{color:var(--mat-ink);font-family:var(--f-num);font-weight:600}
+.pos{color:#4fe39a!important}.neg{color:#ff7b86!important}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.cnt{display:inline-flex;align-items:center;gap:6px;background:#ffffff0d;border:1px solid var(--mat-line);border-radius:7px;padding:3px 8px 3px 3px;font-size:12.5px}
+.stage h4{font-size:12px;letter-spacing:.1em;color:var(--mat-muted);margin:16px 0 8px;font-weight:700}
+.strip{display:flex;flex-wrap:wrap;gap:4px}
+.pk{width:20px;height:28px;border-radius:3px;background:#ffffff14;border:1px solid var(--mat-line);position:relative}
+.pk.has{background:var(--face);border-color:var(--frame)}
+.pk.god{outline:2px solid #fff;outline-offset:1px}
+.boxrows{display:flex;flex-direction:column;gap:4px;font-size:12.5px}
+.boxrow{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:center;padding:5px 8px;border-radius:7px;background:#ffffff08}
+.boxrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{color:var(--mat-muted);font-size:13px}
+
+/* card */
+.card{aspect-ratio:63/88;max-width:100%;border-radius:9px;padding:7px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;background:var(--face);border:3px solid var(--frame);box-shadow:0 6px 16px #0006;animation:flip .42s cubic-bezier(.2,.8,.3,1.2) both;animation-delay:var(--d,0ms)}
+.card .c-r{align-self:flex-start;font-family:var(--f-ja);font-size:13px;color:#fff;background:#0009;border-radius:4px;padding:0 6px;letter-spacing:.03em}
+.card .c-b{background:#000000a8;border-radius:6px;padding:5px 6px;color:#fff;display:flex;flex-direction:column;gap:1px}
+.card .c-n{font-size:12px;font-weight:700;line-height:1.25;word-break:keep-all;overflow-wrap:anywhere}
+.card .c-s{font-size:10.5px;opacity:.75}
+.card .c-p{font-family:var(--f-num);font-size:12px;color:#ffe89a}
+.card.holo::after{content:"";position:absolute;inset:-40%;background:linear-gradient(115deg,transparent 40%,#ffffff70 50%,transparent 60%);transform:translateX(-60%);animation:sheen 2.6s ease-in-out infinite;animation-delay:calc(var(--d,0ms) + .4s);pointer-events:none;mix-blend-mode:overlay}
+.card.jack{box-shadow:0 0 0 2px #fff,0 0 28px 6px #ffd76a99}
+.common{aspect-ratio:63/88;max-width:100%;border-radius:9px;border:2px dashed var(--mat-line);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mat-muted);font-size:12px;gap:2px;text-align:center;padding:6px}
+.common b{font-family:var(--f-num);font-size:20px;color:var(--mat-ink)}
+@keyframes flip{from{transform:rotateY(90deg) scale(.9);opacity:0}to{transform:none;opacity:1}}
+@keyframes sheen{0%{transform:translateX(-60%)}60%,100%{transform:translateX(60%)}}
+@media (prefers-reduced-motion: reduce){.card,.card.holo::after{animation:none}}
+
+/* rarity faces */
+.r-RR{--face:linear-gradient(160deg,#6a7896,#2f3a52);--frame:#c6cddc}
+.r-AR{--face:linear-gradient(160deg,#58c4b0,#3a6fb0 60%,#8a5bb5);--frame:#eef2f5}
+.r-SR{--face:linear-gradient(125deg,#8d97aa,#e8ecf3 30%,#8d97aa 55%,#dfe4ec 80%,#7c8699);--frame:#c3cad8}
+.r-SAR{--face:conic-gradient(from 200deg at 60% 40%,#ff6b8a,#ffc46b,#f5ff7a,#6bffb0,#6bc8ff,#b18cff,#ff6b8a);--frame:#ffffff}
+.r-UR{--face:linear-gradient(125deg,#8a6a1c,#f3d67a 30%,#a8832a 55%,#f7e39c 80%,#7a5c15);--frame:#e2c36a}
+.r-MUR{--face:linear-gradient(125deg,#141414,#3a2d10 38%,#e0b93a 50%,#2a2110 62%,#0f0f0f);--frame:#d4ad32}
+.r-FUR{--face:linear-gradient(125deg,#f2c6ff,#ffffff 28%,#b9a4ff 52%,#fff1c9 76%,#bfe6ff);--frame:#ffffff}
+.r-RGB{--face:linear-gradient(135deg,#e5383b 0 33%,#2fa84f 33% 66%,#2b6fe0 66%);--frame:#ffffff}
+.r-BWR{--face:linear-gradient(135deg,#0b0b0b 0 49%,#f2f2f2 51%);--frame:#9a9a9a}
+.r-MA{--face:linear-gradient(160deg,#7b2ff7,#f107a3);--frame:#ffd1f0}
+.r-MB{--face:radial-gradient(circle at 30% 28%,#d49bff,#6a1fb0 55%,#260050);--frame:#e0aaff}
+.r-R30{--face:linear-gradient(160deg,#10224d,#1d3f8a 60%,#c9a227);--frame:#e8c96a}
+.r-ACE{--face:linear-gradient(160deg,#232323,#4d4d4d);--frame:#ff5fa2}
+.r-PIKA{--face:linear-gradient(160deg,#ffe066,#f0a800);--frame:#fff3b0}
+.r-EN{--face:linear-gradient(160deg,#9fb4c8,#e9eef4 45%,#8aa0b6);--frame:#dfe6ee}
+.rchip{display:inline-block;min-width:38px;text-align:center;font-family:var(--f-ja);font-size:11.5px;line-height:1.5;padding:1px 6px;border-radius:5px;background:var(--face);border:1px solid var(--frame);color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}
+
+/* lower panels */
+.lower{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-width:0}
+.box h2{font-size:15px;margin:0 0 2px}
+.box .desc{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{font-weight:500;color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;font-size:11.5px}
+th:first-child,td:first-child{text-align:left}
+td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+td.sub{color:var(--muted);font-size:11.5px}
+tr:last-child td{border-bottom:0}
+.statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;margin-bottom:14px}
+.stat .l{font-size:11.5px;color:var(--muted)}
+.stat .v{font-family:var(--f-num);font-size:18px;font-weight:600}
+.good{color:var(--good)}.bad{color:var(--bad)}
+.vs{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.vsrow{display:grid;grid-template-columns:62px minmax(0,1fr) 94px;gap:10px;align-items:center;font-size:12px}
+.bar{height:8px;background:var(--surface2);border-radius:4px;position:relative;overflow:hidden;border:1px solid var(--line)}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--ink);border-radius:4px}
+.bar u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--accent)}
+.best{display:flex;flex-direction:column;gap:4px;font-size:12.5px}
+.best div{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.best .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linkbtn{border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:8px;padding:5px 10px;font-size:12px}
+.foot{margin-top:28px;color:var(--muted);font-size:12px;line-height:1.7}
+.foot h3{font-size:12.5px;color:var(--ink);margin:0 0 4px}
+.foot a{color:var(--muted)}
+.foot ul{margin:4px 0 0;padding-left:18px;columns:2 280px}
+
+@media (max-width:900px){
+  .main{grid-template-columns:minmax(0,1fr)}
+  .setlist{position:static;flex-direction:row;overflow-x:auto;padding-bottom:6px}
+  .setlist h2,.list-sep{display:none}
+  .set-btn{flex:0 0 212px}
+  .lower{grid-template-columns:minmax(0,1fr)}
+}
+.card .c-x{position:absolute;top:6px;right:6px;font-family:var(--f-num);font-size:12px;font-weight:600;background:#fff;color:#111;border-radius:999px;padding:0 7px;box-shadow:0 1px 4px #0008}
+@media (max-width:620px){
+  .brand h1{font-size:26px}
+  .brand p{font-size:13px}
+  .top{align-items:flex-start;margin-bottom:12px}
+  .seg-wrap{align-items:flex-start}
+  .seg-wrap small{display:none}
+  .seg button{padding:10px 14px}
+  .set-btn{flex:0 0 178px;grid-template-columns:26px 1fr;padding:8px 10px}
+  .set-btn .ja{white-space:normal;font-size:12.5px}
+  .set-btn .bp{grid-row:auto;grid-column:2;text-align:left}
+  .set-btn .rk{grid-row:span 3;font-size:17px}
+  .sethead{grid-template-columns:minmax(0,1fr);padding:14px;gap:10px}
+  .sethead .t-ko{margin-bottom:6px}
+  .guar{gap:4px;margin-top:8px}
+  .guar span{font-size:11.5px;padding:2px 6px}
+  .ev{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;min-width:0}
+  .ev > div:first-child{grid-column:1 / -1}
+  .ev .big{font-size:22px}
+  .ev .row{flex-direction:column;gap:0}
+  .play{overflow:clip}
+  .controls{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:6px;padding:10px}
+  .controls .btn{padding:10px 4px;font-size:13px;min-height:44px}
+  .btn small{display:block;margin:0;font-size:10.5px}
+  .hunt{grid-column:1 / -1}
+  .hunt select{max-width:none;min-height:42px;font-size:13px}
+  .stage{padding:12px}
+  .cards,.cards.lg{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .card{padding:5px;border-width:2px}
+  .card .c-n{font-size:11px}
+  .card .c-r{font-size:11.5px}
+  .linkbtn{min-height:40px}
+  .stat .v{font-size:16px}
+  .stat .v span{display:block;line-height:1.2}
+  /* rate table → stacked rows */
+  #rates thead{display:none}
+  #rates,#rates tbody{display:block}
+  #rates tr{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  #rates tr:last-child{border-bottom:0}
+  #rates td{display:flex;justify-content:space-between;gap:8px;border:0;padding:0;white-space:normal;text-align:right;font-size:12px}
+  #rates td:first-child{grid-column:1 / -1;justify-content:flex-start;align-items:center;margin-bottom:4px}
+  #rates td:not(:first-child)::before{content:attr(data-l);color:var(--muted);font-family:var(--f-ko);text-align:left}
+  #rates td.wide{grid-column:1 / -1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>포켓몬카드 <em>박스깡</em> 시뮬레이터</h1>
+      <p>일본판 인기 박스 10종(+번외 5종)의 개봉 조사 봉입률로 팩·박스를 가상 개봉합니다. 시세는 2026년 9월 기준 추정치(엔)입니다.</p>
+    </div>
+    <div class="seg-wrap">
+      <div class="seg" role="group" aria-label="비용 기준">
+        <button id="basis-market" type="button" aria-pressed="true">박스 시세 기준</button>
+        <button id="basis-msrp" type="button" aria-pressed="false">정가 기준</button>
+      </div>
+      <small>개봉 비용 계산에 쓰는 가격</small>
+    </div>
+  </header>
+
+  <div class="main">
+    <nav class="setlist" id="setlist" aria-label="박스 선택"></nav>
+
+    <section class="panel">
+      <div class="sethead" id="sethead"></div>
+
+      <div class="play">
+        <div class="controls">
+          <button class="btn primary" id="b-pack" type="button">팩 1개 열기</button>
+          <button class="btn" id="b-box" type="button">박스 1개</button>
+          <button class="btn" id="b-10" type="button">10박스</button>
+          <button class="btn" id="b-100" type="button">100박스</button>
+          <div class="hunt">
+            <select id="target" aria-label="목표 카드"></select>
+            <button class="btn" id="b-hunt" type="button">나올 때까지</button>
+          </div>
+        </div>
+        <div class="stage" id="stage" aria-live="polite"></div>
+      </div>
+
+      <div class="lower">
+        <div class="box">
+          <h2>봉입률 표</h2>
+          <p class="desc">박스 1개 기준. 개봉 조사 사이트의 추정치로, 공식 수치가 아닙니다.</p>
+          <div class="tbl-wrap"><table id="rates"></table></div>
+        </div>
+        <div class="box">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <h2>누적 기록</h2>
+            <button class="linkbtn" id="b-reset" type="button">이 박스 기록 초기화</button>
+          </div>
+          <p class="desc">이 세트에서 지금까지 개봉한 결과입니다.</p>
+          <div id="stats"></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <h3>데이터 출처와 한계</h3>
+        봉입률은 팬 개봉 조사(수백~2,000박스 표본)의 추정치이며, 사이트마다 차이가 있어 가장 많이 인용된 값을 썼습니다. 이름이 없는 카드(예: “기타 AR”)는 평균 시세로 계산했습니다. 갓팩 구성은 단순화했습니다. 카드·박스 시세는 모두 <b>샵 판매가</b> 기준(2026-09-21~23)입니다. 뽑은 카드를 샵에 팔면 매입가는 보통 판매가의 50~70%라, 실제 회수 금액은 표시된 가치보다 낮습니다.
+        <ul>
+          <li><a href="https://torecamap.co.jp/column/celebration/" target="_blank" rel="noopener">トレカの地図 · 30th CELEBRATION</a></li>
+          <li><a href="https://pokemon-infomation.com/pull-rates-30th/" target="_blank" rel="noopener">ポケゲトちゃんねる · 30th</a></li>
+          <li><a href="https://torecamap.co.jp/column/infernox/" target="_blank" rel="noopener">トレカの地図 · インフェルノX</a></li>
+          <li><a href="https://pokemon-infomation.com/pull-rates-infernox/" target="_blank" rel="noopener">ポケゲトちゃんねる · インフェルノX</a></li>
+          <li><a href="https://pokemon-infomation.com/pull-rates-pokemoncard151/" target="_blank" rel="noopener">ポケゲトちゃんねる · 151</a></li>
+          <li><a href="https://pokemon-infomation.com/pull-rates-terafesex/" target="_blank" rel="noopener">ポケゲトちゃんねる · テラスタルフェスex</a></li>
+          <li><a href="https://pokemon-infomation.com/pull-rates-rocketdaneikou/" target="_blank" rel="noopener">ポケゲトちゃんねる · ロケット団の栄光</a></li>
+          <li><a href="https://torecamap.co.jp/column/sv8/" target="_blank" rel="noopener">トレカの地図 · 超電ブレイカー</a></li>
+          <li><a href="https://pokemon-infomation.com/pull-rates-megadreamex/" target="_blank" rel="noopener">ポケゲトちゃんねる · MEGAドリームex</a></li>
+          <li><a href="https://pokemon-infomation.com/pull-rates-vstaruniverse/" target="_blank" rel="noopener">ポケゲトちゃんねる · VSTARユニバース</a></li>
+          <li><a href="https://pokeka-atari.jp/expansion/black-bolt" target="_blank" rel="noopener">ポケカ当たり · ブラックボルト</a></li>
+          <li><a href="https://pokeka-atari.jp/expansion/white-flare" target="_blank" rel="noopener">ポケカ当たり · ホワイトフレア</a></li>
+          <li><a href="https://torecamap.co.jp/column/m1l/" target="_blank" rel="noopener">トレカの地図 · メガブレイブ</a></li>
+          <li><a href="https://torecamap.co.jp/column/munikisuzero/" target="_blank" rel="noopener">トレカの地図 · ムニキスゼロ</a></li>
+          <li><a href="https://pokemon-infomation.com/pull-rates-ninjaspiner/" target="_blank" rel="noopener">ポケゲトちゃんねる · ニンジャスピナー</a></li>
+          <li><a href="https://pokemon-infomation.com/pull-rates-abysseye/" target="_blank" rel="noopener">ポケゲトちゃんねる · アビスアイ</a></li>
+          <li><a href="https://torecamap.co.jp/column/m3/" target="_blank" rel="noopener">トレカの地図 · ストームエメラルダ</a></li>
+          <li><a href="https://snkrdunk.com/articles/31949/" target="_blank" rel="noopener">スニーカーダンク · 未開封BOX高騰ランキング</a></li>
+        </ul>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ---------- rarity meta ---------- */
+const RAR = {
+  RGB:{label:'RGB',tier:10}, BWR:{label:'BWR',tier:9}, MUR:{label:'MUR',tier:9}, FUR:{label:'FUR',tier:9},
+  UR:{label:'UR',tier:8}, SAR:{label:'SAR',tier:8},
+  MA:{label:'MA',tier:6}, MB:{label:'MB',tier:6}, R30:{label:'30th',tier:6},
+  SR:{label:'SR',tier:5}, AR:{label:'AR',tier:4}, ACE:{label:'ACE',tier:3}, RR:{label:'RR',tier:2}, PIKA:{label:'ピカ',tier:1}, EN:{label:'エネ',tier:1}
+};
+const isFiller = r => r === 'PIKA' || r === 'EN';
+const P = (r, n, named, other, sub) => ({r, n, named: named || [], other: other ?? 0, sub: sub || ''});
+/* rates = per-box odds from opening surveys (already including 2-hit boxes); extra = chance of a 2nd hit.
+   Both draws share one distribution scaled so the per-box totals match the survey. SR takes the remainder. */
+function topSlots(rates, extra){
+  const pick = {}; let hi = 0;
+  for (const k in rates){ pick[k] = rates[k]/(1+extra); hi += pick[k]; }
+  pick.SR = 1 - hi;
+  return [{p:1, pick}, {p:extra, pick}];
+}
+
+/* ---------- set data (per box) ---------- */
+const SETS = [
+{ id:'30th', rank:1, ja:'30th CELEBRATION', ko:'30주년 셀레브레이션', code:'30th', release:'2026-09-16',
+  packPrice:360, packs:20, cpp:6, boxPrice:22900,
+  guar:['팩 6장 전부 키라 (키라 5 + 홀로 에너지 1)','SAR 1장 확정','30th 복각 카드 2장','AR 4장 · RR 5장','팩마다 피카츄 키라 1장 (30종)','FUR 약 6박스에 1장','RGB 뮤 약 154박스에 1장'],
+  warn:'발매 1주일 된 세트라 표본이 120~720박스뿐입니다. 봉입률·시세가 크게 바뀔 수 있습니다. AR·복각 카드 일부는 평균 시세로 추정했습니다.',
+  pools:{
+    RGB:P('RGB',3,[['뮤ex (RGB 레드)',570000],['뮤ex (RGB 블루)',510000],['뮤ex (RGB 그린)',460000]]),
+    FUR:P('FUR',2,[['뮤ex',15000],['뮤츠ex',10000]]),
+    SAR:P('SAR',10,[['피카츄ex (밤)',12800],['뮤ex',9700],['피카츄ex (낮)',8700],['팬텀ex',7500],['님피아ex',4200],['뮤츠ex',4200],['지라치ex',3500],['개굴닌자ex',2000],['보만다ex',1200],['뜨아거ex',1100]]),
+    R30:P('R30',30,[['리자몽 Lv.76',30000],['루기아',28000],['팬텀',8500]],900,'복각'),
+    AR:P('AR',20,[],1800),
+    RR:P('RR',10,[],120),
+    PIKA:P('PIKA',30,[],null,'30명 일러스트레이터'),
+    EN:P('EN',8,[],null,'홀로 기본 에너지')
+  },
+  fixed:[['R30',2],['AR',4],['RR',5]], perPack:[['PIKA',1],['EN',1]], filler:'키라 카드<br>(포켓몬)',
+  slots:[{p:1,pick:{SAR:1}},{p:0.17,pick:{FUR:1}},{p:0.0065,pick:{RGB:1}}] },
+
+{ id:'151', rank:2, ja:'ポケモンカード151', ko:'포켓몬 카드 151', code:'sv2a', release:'2023-06-16',
+  packPrice:290, packs:20, cpp:7, boxPrice:58000,
+  guar:['SR 이상 1장 확정 (약 10%는 2장)','AR 3장 · RR 4장','마스터볼 미러 1장','갓팩 약 30박스에 1번'],
+  warn:'절판 세트라 박스 시세가 사이트마다 3만~6만 엔으로 차이가 큽니다. 여기서는 5만 8천 엔으로 잡았습니다.',
+  pools:{
+    UR:P('UR',3,[['뮤ex',12600],['기본 초에너지',2350],['포켓몬 교체',1300]]),
+    SAR:P('SAR',8,[['리자몽ex',72000],['뮤ex',44000],['거북왕ex',25000],['이상해꽃ex',19600],['썬더ex',16800],['후딘ex',9200],['민화의 초대',7800],['비주기의 카리스마',3200]]),
+    SR:P('SR',16,[],900),
+    MB:P('MB',153,[['팬텀',79000],['피카츄',78000],['망나뇽',18900],['고라파덕',17900],['잉어킹',15600]],900,'마스터볼 미러'),
+    AR:P('AR',18,[['피카츄',5230],['파이리',4230]],900),
+    RR:P('RR',12,[],200)
+  },
+  fixed:[['AR',3],['RR',4],['MB',1]],
+  slots:topSlots({UR:.10,SAR:.167},.10),  // + 갓팩 SAR(1/30) = 박스당 20%
+  god:[{p:1/30,label:'갓팩',cards:[['AR',2],['SAR',1]]}] },
+
+{ id:'m2', rank:3, ja:'インフェルノX', ko:'인페르노X', code:'M2', release:'2025-09-26',
+  packPrice:180, packs:30, cpp:5, boxPrice:19000,
+  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스','MUR 약 50박스에 1장'],
+  pools:{
+    MUR:P('MUR',1,[['메가리자몽X ex',150000]]),
+    SAR:P('SAR',6,[['메가리자몽X ex',85000],['오도리도리ex',2800],['빛나',2500],['메가샤크니아ex',1100],['메가이어롭ex',1000],['로토무ex',900]]),
+    SR:P('SR',11,[['메가리자몽X ex',3700],['빛나',1200]],400,'포켓몬·서포트'),
+    SRG:P('SR',6,[],250,'굿즈·스타디움'),
+    AR:P('AR',12,[['팽도리',500]],300),
+    RR:P('RR',8,[],80)
+  },
+  fixed:[['SRG',1],['AR',3],['RR',4]],
+  slots:topSlots({MUR:.02,SAR:.28},.10) },
+
+{ id:'sv8a', rank:4, ja:'テラスタルフェスex', ko:'테라스탈 페스타ex', code:'sv8a', release:'2024-12-06',
+  packPrice:550, packs:10, cpp:10, boxPrice:16000,
+  guar:['포켓몬 SAR 1장 확정','ACE SPEC 1장','마스터볼 미러 약 2박스에 1장','SAR 3장 팩 약 20박스에 1번','이브이 갓팩 약 800박스에 1번'],
+  pools:{
+    UR:P('UR',5,[['피카츄ex',10000],['테라파고스ex',1280],['굽이치는물결ex',880],['오거폰 벽록의가면ex',800],['무쇠잎새ex',785]]),
+    SAR:P('SAR',27,[['블래키ex',65000],['님피아ex',18600],['에브이ex',9000],['리피아ex',8700],['글레이시아ex',8200],['샤미드ex',7900],['쥬피썬더ex',7300],['부스터ex',7200],['이브이ex (223)',6500],['이브이ex (224)',5300]],1500,'포켓몬'),
+    SARS:P('SAR',6,[],1000,'서포트'),
+    SR:P('SR',12,[],500),
+    MB:P('MB',100,[['블래키',19700]],800,'마스터볼 미러'),
+    ACE:P('ACE',8,[],150),
+    RR:P('RR',30,[],80)
+  },
+  fixed:[['SAR',1],['ACE',1],['RR',8]],
+  slots:[{p:.10,pick:{SARS:1}},{p:.20,pick:{SR:1}},{p:.06,pick:{UR:1}},{p:.5,pick:{MB:1}}],
+  god:[{p:1/20,label:'SAR 3장 팩',cards:[['SAR',3]]},
+       {p:1/800,label:'이브이 갓팩',cards:[['SAR','블래키ex'],['SAR','님피아ex'],['SAR','에브이ex'],['SAR','리피아ex'],['SAR','글레이시아ex'],['SAR','샤미드ex'],['SAR','쥬피썬더ex'],['SAR','부스터ex'],['SAR','이브이ex (223)']]}] },
+
+{ id:'sv8', rank:5, ja:'超電ブレイカー', ko:'초전브레이커', code:'sv8', release:'2024-10-18',
+  packPrice:180, packs:30, cpp:5, boxPrice:28000,
+  guar:['SR 이상 1장 확정 (약 10%는 2장)','ACE SPEC 1장','AR 3장 · RR 4장'],
+  pools:{
+    UR:P('UR',3,[['피카츄ex',19900],['밤의 들것',1920],['그래비티 마운틴',1360]]),
+    SAR:P('SAR',6,[['피카츄ex',77000],['밀로틱ex',13100],['삼삼드래ex',4870],['규리의 눈길',3960],['아이앤트ex',2240],['시트론의 기지',1100]]),
+    SR:P('SR',11,[['피카츄ex',7300],['시아노',1540]],400),
+    ACE:P('ACE',3,[],200),
+    AR:P('AR',12,[['레어코일',1600],['카디나르마',840]],350),
+    RR:P('RR',8,[],80)
+  },
+  fixed:[['ACE',1],['AR',3],['RR',4]],
+  slots:topSlots({UR:.094,SAR:.184},.10) },
+
+{ id:'sv10', rank:6, ja:'ロケット団の栄光', ko:'로켓단의 영광', code:'sv10', release:'2025-04-18',
+  packPrice:180, packs:30, cpp:5, boxPrice:23000,
+  guar:['SR 이상 1장 확정 (약 10%는 2장)','AR 3장 · RR 4장'],
+  pools:{
+    UR:P('UR',3,[['로켓단의 뮤츠ex',9400],['로켓단의 크로뱃ex',2100],['재밍 타워',1480]]),
+    SAR:P('SAR',6,[['로켓단의 뮤츠ex',58700],['로켓단의 파이어ex',20400],['로켓단의 니드킹ex',10600],['로켓단의 크로뱃ex',7600],['로켓단의 비주기',3500],['로켓단의 아테나',2950]]),
+    SR:P('SR',13,[['로켓단의 뮤츠ex',4060],['로켓단의 람다',3560],['로켓단의 파이어ex',1370]],500),
+    AR:P('AR',12,[['로켓단의 나옹',2050]],400),
+    RR:P('RR',8,[],80)
+  },
+  fixed:[['AR',3],['RR',4]],
+  slots:topSlots({UR:.0985,SAR:.185},.10) },
+
+{ id:'m2a', rank:7, ja:'MEGAドリームex', ko:'MEGA 드림ex', code:'M2a', release:'2025-11-28',
+  packPrice:550, packs:10, cpp:10, boxPrice:12000,
+  guar:['MA 1장 확정','SR(굿즈) 1장 확정','AR 3장 · RR 4장','약 48%는 SAR·SR·MUR 추가','갓팩 약 50박스에 1번'],
+  warn:'MUR 봉입률은 사이트마다 50~133박스에 1장으로 차이가 큽니다. 여기서는 약 67박스에 1장으로 잡았습니다.',
+  pools:{
+    MUR:P('MUR',1,[['메가망나뇽ex',24000]]),
+    SAR:P('SAR',17,[['메가팬텀ex',40000],['피카츄ex',26000],['메가망나뇽ex',19000],['로켓단의 뮤츠ex',11500],['N의 조로아크ex',5300],['아이리스의 투지',4000],['카나리',3700],['마리의 오롱털ex',3700],['모야모의 찌리배리ex',3500],['성호의 메타그로스ex',3500],['메가눈여아ex',3000],['키치키기스ex',3000],['메가디안시ex',2800],['메가루차불ex',1800],['메가곤율거니ex',1500],['메가저리더프ex',1400],['서퍼',600]]),
+    SR:P('SR',3,[],800,'서포트'),
+    MA:P('MA',10,[['메가리자몽X ex',3800]],1200),
+    SRG:P('SR',6,[],300,'굿즈'),
+    AR:P('AR',20,[],500),
+    RR:P('RR',30,[],80)
+  },
+  fixed:[['MA',1],['SRG',1],['AR',3],['RR',4]],
+  slots:[{p:.48,pick:{MUR:.031,SAR:.76,SR:.209}}],
+  god:[{p:1/50,label:'갓팩',cards:[['AR',1],['MA',5],['SAR',4]]}] },
+
+{ id:'s12a', rank:8, ja:'VSTARユニバース', ko:'VSTAR 유니버스', code:'s12a', release:'2022-12-02',
+  packPrice:550, packs:10, cpp:10, boxPrice:30000,
+  guar:['포켓몬 SAR 1장 확정','에너지 SR 1장','AR 3장','UR 약 10박스에 1장','갓팩 약 50박스에 1번'],
+  warn:'갓팩과 AR 9장 팩의 실제 구성은 여러 종류가 있어 단순화했습니다.',
+  pools:{
+    UR:P('UR',4,[['기라티나VSTAR',31800],['아르세우스VSTAR',18440],['오리진 펄기아VSTAR',11676],['오리진 디아루가VSTAR',11476]]),
+    SAR:P('SAR',25,[['뮤츠VSTAR',14550],['리자몽VSTAR',11840],['리자몽V',6784],['리피아VSTAR',5844],['다크라이VSTAR',5484],['글레이시아VSTAR',4964]],1500,'포켓몬'),
+    SARS:P('SAR',10,[['난천의 패기',4844],['카이',4035]],1500,'서포트'),
+    SR:P('SR',6,[],500,'서포트'),
+    SRE:P('SR',8,[],200,'에너지'),
+    AR:P('AR',37,[['피카츄',47040],['뮤',6384]],700),
+    RR:P('RR',20,[],60,'RR·RRR')
+  },
+  fixed:[['SAR',1],['SRE',1],['AR',3],['RR',9]],
+  slots:[{p:.20,pick:{SARS:1}},{p:.10,pick:{UR:1}},{p:.25,pick:{SR:1}}],
+  god:[{p:.02,label:'갓팩',cards:[['SAR',8],['UR',2]]},{p:.015,label:'AR 9장 팩',cards:[['AR',9],['SAR',1]]}] },
+
+{ id:'sv11b', rank:9, ja:'ブラックボルト', ko:'블랙볼트', code:'sv11B', release:'2025-06-06',
+  packPrice:290, packs:20, cpp:7, boxPrice:23500,
+  guar:['SR 이상 1장 확정','AR 4장 · RR 4장','마스터볼 미러 1장','BWR 약 24박스에 1장'],
+  warn:'BWR 봉입률은 대부분 “2카톤(24박스)에 1장”으로 보지만, 1%로 보는 곳도 있습니다.',
+  pools:{
+    BWR:P('BWR',1,[['제크로무ex',69500]]),
+    SAR:P('SAR',7,[['제크로무ex',25858],['N의 각본',5734],['큐레무ex',4700],['샤로다ex',3770],['메로엣타ex',3675],['게노세크트ex',3184],['몰드류ex',1493]]),
+    SR:P('SR',8,[['N의 각본',1042],['제크로무ex',1042]],400),
+    MB:P('MB',72,[],600,'마스터볼 미러'),
+    AR:P('AR',72,[['두까비',9826],['비크티니',2853],['유니란',2500]],300),
+    RR:P('RR',6,[],100)
+  },
+  fixed:[['AR',4],['RR',4],['MB',1]],
+  slots:topSlots({BWR:.042,SAR:.24},.05) },
+
+{ id:'sv11w', rank:10, ja:'ホワイトフレア', ko:'화이트플레어', code:'sv11W', release:'2025-06-06',
+  packPrice:290, packs:20, cpp:7, boxPrice:24000,
+  guar:['SR 이상 1장 확정','AR 4장 · RR 4장','마스터볼 미러 1장','BWR 약 22박스에 1장'],
+  warn:'BWR 봉입률은 대부분 “2카톤(24박스)에 1장”으로 보지만, 1%로 보는 곳도 있습니다.',
+  pools:{
+    BWR:P('BWR',1,[['레시라무ex',67686]]),
+    SAR:P('SAR',7,[['레시라무ex',24334],['토우코',7150],['삼삼드래ex',5355],['케르디오ex',3885],['탱탱겔ex',2810],['엘풍ex',2434],['버프론ex',1641]]),
+    SR:P('SR',8,[['토우코',2784]],400),
+    MB:P('MB',72,[],600,'마스터볼 미러'),
+    AR:P('AR',72,[['수댕이',5824],['조로아크',2840],['조로아',2828]],300),
+    RR:P('RR',6,[],100)
+  },
+  fixed:[['AR',4],['RR',4],['MB',1]],
+  slots:topSlots({BWR:.045,SAR:.245},.05) },
+
+{ id:'m1l', rank:'+', ja:'メガブレイブ', ko:'메가브레이브', code:'M1L', release:'2025-08-01',
+  packPrice:180, packs:30, cpp:5, boxPrice:8000,
+  guar:['SR(트레이너스) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스'],
+  pools:{
+    MUR:P('MUR',1,[['메가루카리오ex',48900]]),
+    SAR:P('SAR',5,[['릴리에의 결심',23300],['메가루카리오ex',8150],['메가이상해꽃ex',5900],['메가앱솔ex',2950],['마티스의 거래',860]]),
+    SR:P('SR',8,[['릴리에의 결심',7000],['메가루카리오ex',1190],['메가이상해꽃ex',1106]],400,'포켓몬·서포트'),
+    SRG:P('SR',4,[],250,'트레이너스'),
+    AR:P('AR',12,[['이상해씨',1054],['이상해풀',804]],350),
+    RR:P('RR',5,[],80)
+  },
+  fixed:[['SRG',1],['AR',3],['RR',4]],
+  slots:topSlots({MUR:.018,SAR:.286},.10) },
+
+{ id:'m3', rank:'+', ja:'ムニキスゼロ', ko:'무니키스제로', code:'M3', release:'2026-01-23',
+  packPrice:180, packs:30, cpp:5, boxPrice:7100,
+  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스'],
+  pools:{
+    MUR:P('MUR',1,[['메가지가르데ex',24000]]),
+    SAR:P('SAR',6,[['메이의 격려',10400],['나옹ex',9200],['메가지가르데ex',2900],['메가픽시ex',2500],['메가아쿠스타ex',3000],['유카리',1800]]),
+    SR:P('SR',12,[['나옹ex',2600],['메이의 격려',2500]],400,'포켓몬·서포트'),
+    SRG:P('SR',6,[['포켓패드',1000]],250,'굿즈·스타디움'),
+    AR:P('AR',12,[['삐삐',2000],['토게피',1000]],350),
+    RR:P('RR',8,[],80)
+  },
+  fixed:[['SRG',1],['AR',3],['RR',4]],
+  slots:topSlots({MUR:.015,SAR:.29},.10) },
+
+{ id:'m4', rank:'+', ja:'ニンジャスピナー', ko:'닌자스피너', code:'M4', release:'2026-03-13',
+  packPrice:180, packs:30, cpp:5, boxPrice:6800,
+  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스','MUR 약 100박스에 1장'],
+  warn:'MUR 봉입률은 50~111박스에 1장, MUR 시세는 7.5만~11만 엔으로 사이트마다 차이가 큽니다. 중간값으로 잡았습니다.',
+  pools:{
+    MUR:P('MUR',1,[['메가개굴닌자ex',80000]]),
+    SAR:P('SAR',6,[['메가개굴닌자ex',21000],['치라치노ex',3600],['메가드래캄ex',2000],['메가플라엣테ex',1400],['호미카의 연주',1200],['AZ의 안식',1100]]),
+    SR:P('SR',12,[['메가개굴닌자ex',1580],['호미카의 연주',680],['마티에르',680]],450,'포켓몬·서포트'),
+    SRG:P('SR',6,[],250,'굿즈·스타디움'),
+    AR:P('AR',12,[['개구마르',580],['전룡',580],['푸호꼬',580]],400),
+    RR:P('RR',8,[],80)
+  },
+  fixed:[['SRG',1],['AR',3],['RR',4]],
+  slots:topSlots({MUR:.01,SAR:.31},.10) },
+
+{ id:'m5', rank:'+', ja:'アビスアイ', ko:'어비스아이', code:'M5', release:'2026-05-22',
+  packPrice:200, packs:30, cpp:5, boxPrice:6900,
+  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 10%는 2장 박스','MUR 약 80박스에 1장'],
+  pools:{
+    MUR:P('MUR',1,[['메가다크라이ex',50000]]),
+    SAR:P('SAR',6,[['메가다크라이ex',23800],['모르페코ex',4000],['무크',3900],['메가제라오라ex',2600],['메가샹델라ex',2400],['글라디오의 결전',1400]]),
+    SR:P('SR',12,[['이슬의 기운',2200],['무크',2000],['메가다크라이ex',1000]],350,'포켓몬·서포트'),
+    SRG:P('SR',6,[],250,'굿즈'),
+    AR:P('AR',12,[['야도란',800],['콘치',450],['카디나르마',430]],300),
+    RR:P('RR',8,[],80)
+  },
+  fixed:[['SRG',1],['AR',3],['RR',4]],
+  slots:topSlots({MUR:.012,SAR:.27},.10) },
+
+{ id:'m6', rank:'+', ja:'ストームエメラルダ', ko:'스톰에메랄드', code:'M6', release:'2026-07-31',
+  packPrice:200, packs:30, cpp:5, boxPrice:9550,
+  guar:['SR(굿즈) 1장 확정','SR·SAR·MUR 중 1장 확정','AR 3장 · RR 4장','약 11%는 2장 박스','MUR 약 50박스에 1장'],
+  warn:'박스 시세는 9,550엔(トレカの地図)~12,770엔(ポケカ当たり)으로 사이트마다 다릅니다. 조사 표본 크기는 공개되지 않았습니다.',
+  pools:{
+    MUR:P('MUR',1,[['메가레쿠쟈ex',95000]]),
+    SAR:P('SAR',6,[['메가레쿠쟈ex',38000],['라이코ex',5500],['히가나의 신뢰',2300],['메가골루그ex',1200],['메가갑주무사ex',1200],['기리',700]]),
+    SR:P('SR',12,[['메가레쿠쟈ex',3100],['파이어로ex',1100],['히가나의 신뢰',780]],400,'포켓몬·서포트'),
+    SRG:P('SR',6,[],250,'굿즈·에너지'),
+    AR:P('AR',12,[['그란돈',1300],['가이오가',1300],['켈리몬',1050]],400),
+    RR:P('RR',8,[],80)
+  },
+  fixed:[['SRG',1],['AR',3],['RR',4]],
+  slots:topSlots({MUR:.0195,SAR:.31},.11) }
+];
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const yen = v => v == null ? '—' : '¥' + Math.round(v).toLocaleString('ja-JP');
+const signed = v => (v >= 0 ? '+' : '−') + '¥' + Math.abs(Math.round(v)).toLocaleString('ja-JP');
+const pct = v => v >= 0.995 ? '100%' : v >= 0.1 ? (v*100).toFixed(1) + '%' : (v*100).toFixed(2) + '%';
+const rnd = () => Math.random();
+const tierOf = c => RAR[c.r].tier;
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; }
+function perBoxText(exp){
+  if (exp >= 1) return '박스당 ' + (Math.round(exp*10)/10) + '장';
+  if (exp <= 0) return '—';
+  const n = 1/exp;
+  return '약 ' + (n < 10 ? n.toFixed(1) : Math.round(n).toLocaleString()) + '박스에 1장';
+}
+function avgPrice(p){ const s = p.named.reduce((a,x)=>a+(x[1]||0),0); return (s + (p.n - p.named.length)*(p.other||0)) / p.n; }
+function poolLabel(p){ return p.sub ? p.sub : ''; }
+
+/* ---------- generation ---------- */
+function mk(id, p, name, price, generic){ return {pool:id, r:p.r, name, price: price ?? 0, generic: !!generic, sub:p.sub}; }
+function draw(set, id){
+  const p = set.pools[id], i = Math.floor(rnd()*p.n);
+  if (i < p.named.length) return mk(id, p, p.named[i][0], p.named[i][1]);
+  return mk(id, p, id === 'PIKA' ? '피카츄 키라' : id === 'EN' ? '기본 에너지 (홀로)' : '기타 ' + RAR[p.r].label + (p.sub ? ' · ' + p.sub : ''), p.other, true);
+}
+function drawNamed(set, id, name){ const p = set.pools[id]; const it = p.named.find(x => x[0] === name); return mk(id, p, it[0], it[1]); }
+function pickKey(pick){ let r = rnd(), acc = 0; const ks = Object.keys(pick); for (const k of ks){ acc += pick[k]; if (r < acc) return k; } return ks[ks.length-1]; }
+const byReveal = (a,b) => (tierOf(a)-tierOf(b)) || ((a.price||0)-(b.price||0));
+
+function genBox(set){
+  const hits = [];
+  for (const [id,c] of set.fixed) for (let i=0;i<c;i++) hits.push(draw(set,id));
+  for (const s of set.slots) if (rnd() < s.p) hits.push(draw(set, pickKey(s.pick)));
+  let god = null;
+  if (set.god){ let r = rnd(), acc = 0; for (const g of set.god){ acc += g.p; if (r < acc){ god = g; break; } } }
+  const packs = Array.from({length:set.packs}, () => ({cards:[], god:null, common:0}));
+  let gi = -1;
+  if (god){
+    gi = Math.floor(rnd()*set.packs);
+    packs[gi].god = god.label;
+    for (const e of god.cards){
+      if (typeof e[1] === 'string') packs[gi].cards.push(drawNamed(set, e[0], e[1]));
+      else for (let i=0;i<e[1];i++) packs[gi].cards.push(draw(set, e[0]));
+    }
+  }
+  const idx = packs.map((_,i)=>i).filter(i => i !== gi);
+  for (const [id,c] of (set.perPack||[])) for (const i of idx) for (let k=0;k<c;k++) packs[i].cards.push(draw(set,id));
+  shuffle(hits);
+  const load = new Array(set.packs).fill(0);
+  for (const h of hits){
+    let best = [], m = Infinity;
+    for (const i of idx){ if (load[i] < m){ m = load[i]; best = [i]; } else if (load[i] === m) best.push(i); }
+    const i = best[Math.floor(rnd()*best.length)];
+    packs[i].cards.push(h); load[i]++;
+  }
+  for (const pk of packs){ pk.common = Math.max(0, set.cpp - pk.cards.length); pk.cards.sort(byReveal); }
+  return {packs, god: god ? god.label : null};
+}
+
+/* ---------- analysis ---------- */
+function analyze(set){
+  const rows = []; let ev = 0;
+  for (const id in set.pools){
+    const p = set.pools[id];
+    let exp = 0, none = 1, sure = false;
+    for (const [f,c] of set.fixed) if (f === id){ exp += c; sure = true; }
+    for (const [f,c] of (set.perPack||[])) if (f === id){ exp += c*set.packs; sure = true; }
+    for (const s of set.slots){ const q = s.p*(s.pick[id]||0); exp += q; none *= 1-q; }
+    for (const g of (set.god||[])){
+      const c = g.cards.filter(e => e[0] === id).reduce((a,e) => a + (typeof e[1] === 'string' ? 1 : e[1]), 0);
+      if (c){ exp += g.p*c; none *= 1-g.p; }
+    }
+    const avg = avgPrice(p);
+    if (!isFiller(id)) ev += exp*avg;
+    rows.push({id, p, exp, pAny: sure ? 1 : 1-none, avg});
+  }
+  rows.sort((a,b) => (RAR[b.p.r].tier - RAR[a.p.r].tier) || (b.avg - a.avg));
+  const byR = {};
+  for (const r of rows) byR[r.p.r] = (byR[r.p.r]||0) + r.exp;
+  return {rows, ev, byR};
+}
+
+/* ---------- state ---------- */
+const state = { set: SETS[0], basis: 'market', stats: {}, cur: {} };
+const boxCost = set => state.basis === 'market' ? set.boxPrice : set.packPrice*set.packs;
+const packCost = set => boxCost(set)/set.packs;
+function st(set){ return state.stats[set.id] ||= {packs:0, spent:0, value:0, counts:{}, best:{}, gods:0}; }
+function groupCards(cards){
+  const m = new Map();
+  for (const c of cards){ const k = c.pool + '|' + c.name; const g = m.get(k); if (g) g.n++; else m.set(k, {c, n:1}); }
+  return [...m.values()].sort((a,b) => (b.c.price||0)-(a.c.price||0) || tierOf(b.c)-tierOf(a.c));
+}
+function record(set, packs){
+  const s = st(set), pc = packCost(set);
+  for (const pk of packs){
+    s.packs++; s.spent += pc; if (pk.god) s.gods++;
+    for (const c of pk.cards){
+      s.counts[c.r] = (s.counts[c.r]||0) + 1;
+      s.value += c.price||0;
+      if (tierOf(c) >= 5 && !c.generic){
+        const k = c.pool + '|' + c.name;
+        (s.best[k] ||= {c, n:0}).n++;
+      }
+    }
+  }
+}
+const packValue = pk => pk.cards.reduce((a,c)=>a+(c.price||0),0);
+
+/* ---------- render: card ---------- */
+function cardHTML(c, i, jackTier, count){
+  const t = tierOf(c);
+  const cls = ['card','r-'+c.r]; if (t >= 5) cls.push('holo'); if (t >= (jackTier||8)) cls.push('jack');
+  const pool = state.set.pools[c.pool];
+  const sub = c.generic ? (pool ? `${pool.n - pool.named.length}종 중 1장` : '') : (c.r === 'MB' ? '마스터볼 미러' : (c.sub || ''));
+  return `<div class="${cls.join(' ')}" style="--d:${i*110}ms"><span class="c-r">${RAR[c.r].label}</span>${count > 1 ? `<span class="c-x">×${count}</span>` : ''}
+    <span class="c-b"><span class="c-n">${c.name}</span>${sub ? `<span class="c-s">${sub}</span>` : ''}<span class="c-p">${c.price ? yen(c.price) : (isFiller(c.r) ? '시세 미반영' : '—')}</span></span></div>`;
+}
+const chip = r => `<span class="rchip r-${r}">${RAR[r].label}</span>`;
+
+/* ---------- render: set list & head ---------- */
+function renderList(){
+  const el = $('#setlist');
+  let h = '<h2>인기 박스 TOP 10</h2>';
+  SETS.forEach((s,i) => {
+    if (s.rank === '+' && SETS[i-1].rank !== '+') h += '<div class="list-sep">번외</div>';
+    h += `<button type="button" class="set-btn" data-id="${s.id}" aria-pressed="${s === state.set}">
+      <span class="rk ${typeof s.rank === 'number' && s.rank <= 3 ? 'top3' : ''}">${s.rank}</span>
+      <span class="ja">${s.ja}</span><span class="ko">${s.ko}</span>
+      <span class="bp num">${yen(s.boxPrice)}</span></button>`;
+  });
+  el.innerHTML = h;
+  el.querySelectorAll('.set-btn').forEach(b => b.addEventListener('click', () => selectSet(b.dataset.id)));
+}
+function renderHead(){
+  const s = state.set, a = analyze(s), cost = boxCost(s);
+  const ratio = a.ev / cost;
+  $('#sethead').innerHTML = `
+    <div>
+      <h2 class="t-ja">${s.ja}</h2>
+      <div class="t-ko">${s.ko} · <span class="num">${s.code}</span></div>
+      <div class="meta">
+        <span>발매 <b class="num">${s.release}</b></span>
+        <span>팩 <b class="num">${yen(s.packPrice)}</b></span>
+        <span>구성 <b>${s.packs}팩 × ${s.cpp}장</b></span>
+        <span>정가 <b class="num">${yen(s.packPrice*s.packs)}</b></span>
+        <span>박스 시세 <b class="num">${yen(s.boxPrice)}</b></span>
+      </div>
+      <div class="guar">${s.guar.map(g => `<span>${g}</span>`).join('')}</div>
+    </div>
+    <div class="ev">
+      <div><div class="lbl">박스 1개 기대값 (카드 판매가 합)</div><div class="big">${yen(a.ev)}</div></div>
+      <div class="row"><span>${state.basis === 'market' ? '박스 시세' : '정가'}</span><span class="num">${yen(cost)}</span></div>
+      <div class="row"><span>회수율</span><span class="num ${ratio >= 1 ? 'good' : 'bad'}">${(ratio*100).toFixed(0)}%</span></div>
+    </div>
+    ${s.warn ? `<div class="warn">${s.warn}</div>` : ''}`;
+}
+function renderRates(){
+  const s = state.set, a = analyze(s);
+  let h = `<thead><tr><th>등급</th><th>종류</th><th>박스에 1장 이상</th><th>박스당 기대 매수</th><th>특정 1종</th><th>평균 시세</th></tr></thead><tbody>`;
+  for (const r of a.rows){
+    if (isFiller(r.id)) continue;
+    h += `<tr><td>${chip(r.p.r)} <span class="sub" style="color:var(--muted);font-size:11.5px">${poolLabel(r.p)}</span></td>
+      <td class="num" data-l="종류">${r.p.n}종</td>
+      <td class="num" data-l="1장 이상">${pct(r.pAny)}</td>
+      <td class="num wide" data-l="기대 매수">${r.exp >= 1 ? r.exp.toFixed(1) : r.exp.toFixed(3)} (${perBoxText(r.exp)})</td>
+      <td class="num wide" data-l="특정 1종">${perBoxText(r.exp / r.p.n)}</td>
+      <td class="num wide" data-l="평균 시세">${yen(r.avg)}</td></tr>`;
+  }
+  $('#rates').innerHTML = h + '</tbody>';
+}
+function renderTargets(){
+  const s = state.set, a = analyze(s), opts = [];
+  for (const r of a.rows){
+    if (RAR[r.p.r].tier < 4) continue;
+    r.p.named.forEach(n => opts.push({id:r.id, r:r.p.r, name:n[0], price:n[1], per:r.exp/r.p.n}));
+  }
+  opts.sort((x,y) => y.price - x.price);
+  $('#target').innerHTML = opts.map(o =>
+    `<option value="${o.id}|${o.name}">${RAR[o.r].label} ${o.name} · ${yen(o.price)} · ${perBoxText(o.per)}</option>`).join('');
+}
+function renderStats(){
+  const s = state.set, x = st(s), a = analyze(s);
+  const boxes = x.packs / s.packs;
+  if (!x.packs){
+    $('#stats').innerHTML = `<p style="color:var(--muted);margin:0">아직 개봉 기록이 없습니다. 위에서 팩이나 박스를 열어 보세요.</p>`;
+    return;
+  }
+  const pl = x.value - x.spent;
+  let h = `<div class="statgrid">
+    <div class="stat"><div class="l">개봉</div><div class="v">${x.packs.toLocaleString()}팩 <span style="font-size:12px;color:var(--muted)">(${boxes.toFixed(boxes%1?1:0)}박스)</span></div></div>
+    <div class="stat"><div class="l">쓴 돈</div><div class="v">${yen(x.spent)}</div></div>
+    <div class="stat"><div class="l">뽑은 카드 가치</div><div class="v">${yen(x.value)}</div></div>
+    <div class="stat"><div class="l">손익 (회수율)</div><div class="v ${pl >= 0 ? 'good' : 'bad'}">${signed(pl)} <span style="font-size:12px">${(x.value/x.spent*100).toFixed(0)}%</span></div></div>
+  </div>`;
+  h += `<div class="vs">`;
+  const rs = Object.keys(a.byR).filter(r => !isFiller(r)).sort((p,q) => RAR[q].tier - RAR[p].tier);
+  for (const r of rs){
+    const got = x.counts[r]||0, exp = a.byR[r]*boxes, max = Math.max(got, exp, 1e-9)*1.15;
+    h += `<div class="vsrow">${chip(r)}<div class="bar" title="기대 ${exp.toFixed(2)}장"><i style="width:${got/max*100}%"></i><u style="left:${exp/max*100}%"></u></div>
+      <span class="num" style="text-align:right">${got} <span style="color:var(--muted)">/ ${exp < 10 ? exp.toFixed(1) : Math.round(exp)}</span></span></div>`;
+  }
+  h += `</div><div style="font-size:11.5px;color:var(--muted);margin:-6px 0 12px">막대 = 실제로 뽑은 매수, 빨간 선 = 기대 매수${x.gods ? ` · 갓팩·특수팩 ${x.gods}번` : ''}</div>`;
+  const best = Object.values(x.best).sort((a,b) => b.c.price - a.c.price).slice(0, 10);
+  if (best.length){
+    h += `<div style="font-size:12px;font-weight:700;margin-bottom:6px">베스트 풀</div><div class="best">` +
+      best.map(g => `<div>${chip(g.c.r)}<span class="nm">${g.c.name}${g.n > 1 ? ` <span style="color:var(--muted)">×${g.n}</span>` : ''}</span><span class="num">${yen(g.c.price)}</span></div>`).join('') + `</div>`;
+  }
+  $('#stats').innerHTML = h;
+}
+
+/* ---------- render: stage ---------- */
+function stageHead(title, sub, god){
+  return `<div class="stage-head"><h3>${title}</h3><span class="sub">${sub}</span>${god ? `<span class="god-tag">${god}</span>` : ''}</div>`;
+}
+function renderPack(pk, n, total){
+  const s = state.set;
+  const common = pk.common ? `<div class="common"><b>${pk.common}</b>${s.filler || 'C · U · R<br>일반 카드'}</div>` : '';
+  const v = packValue(pk);
+  $('#stage').innerHTML = stageHead('팩 개봉', `현재 박스 ${n} / ${total}팩째`, pk.god) +
+    `<div class="cards lg">${common}${pk.cards.map((c,i) => cardHTML(c, i + (pk.common?1:0))).join('')}</div>
+     <div class="sumline"><span>이 팩 카드 가치 <b>${yen(v)}</b></span><span>팩 1개 비용 <b>${yen(packCost(s))}</b> <small>(${state.basis === 'market' ? '박스 시세' : '정가'} ÷ ${s.packs})</small></span>
+     <span>차이 <b class="${v - packCost(s) >= 0 ? 'pos' : 'neg'}">${signed(v - packCost(s))}</b></span></div>`;
+}
+function lowChips(cards){
+  const low = {};
+  for (const c of cards) if (tierOf(c) < 4) low[c.r] = (low[c.r]||0) + 1;
+  return Object.keys(low).sort((a,b)=>RAR[b].tier-RAR[a].tier).map(r => `<span class="cnt">${chip(r)} ×${low[r]}</span>`).join('');
+}
+function renderBoxes(results, sample){
+  const s = state.set, n = results.length;
+  const all = results.flatMap(b => b.packs.flatMap(p => p.cards));
+  const value = all.reduce((a,c)=>a+(c.price||0),0);
+  const packsOpened = results.reduce((a,b)=>a+b.packs.length,0);
+  const cost = packsOpened*packCost(s);
+  const gods = results.filter(b => b.god).map(b => b.god);
+  let h = stageHead(sample ? '예시 박스' : (n === 1 ? '박스 개봉' : `${n}박스 개봉`),
+    sample ? '처음 화면용 예시입니다 · 기록에 포함되지 않음' : `${packsOpened}팩 · ${s.ja}`, gods.length ? (n === 1 ? gods[0] : `특수팩 ${gods.length}번`) : '');
+  if (n === 1){
+    const b = results[0];
+    h += `<h4>팩별 최고 등급</h4><div class="strip">` + b.packs.map(pk => {
+      const top = pk.cards.filter(c => tierOf(c) >= 4).pop();
+      return `<span class="pk ${top ? 'has r-' + top.r : ''} ${pk.god ? 'god' : ''}" title="${top ? RAR[top.r].label + ' ' + top.name : '일반'}"></span>`;
+    }).join('') + `</div>`;
+  }
+  const groups = groupCards(all.filter(c => tierOf(c) >= (n === 1 ? 4 : 5)));
+  const shown = n === 1 ? groups : groups.slice(0, 18);
+  h += `<h4>${n === 1 ? '히트 카드 (AR 이상)' : '상위 히트 카드'}</h4>`;
+  h += shown.length ? `<div class="cards">${shown.map((g,i) => cardHTML(g.c, Math.min(i, 24)*0.5, 8, g.n)).join('')}</div>` : `<p class="empty">SR 이상이 없습니다.</p>`;
+  if (n === 1) h += `<div class="chips">${lowChips(all)}</div>`;
+  else {
+    const cnt = {}; for (const c of all) cnt[c.r] = (cnt[c.r]||0) + 1;
+    const a = analyze(s);
+    h += `<h4>등급별 매수 (실제 / 기대)</h4><div class="chips">` + Object.keys(a.byR).filter(r => !isFiller(r))
+      .sort((p,q)=>RAR[q].tier-RAR[p].tier).map(r => `<span class="cnt">${chip(r)} ${cnt[r]||0} / ${(a.byR[r]*n).toFixed(n >= 100 ? 0 : 1)}</span>`).join('') + `</div>`;
+    if (n <= 10){
+      h += `<h4>박스별 결과</h4><div class="boxrows">` + results.map((b,i) => {
+        const cs = b.packs.flatMap(p => p.cards); const top = cs.slice().sort((x,y)=>(y.price||0)-(x.price||0))[0];
+        const v = cs.reduce((a,c)=>a+(c.price||0),0);
+        return `<div class="boxrow"><span class="num">#${i+1}</span><span class="nm">${chip(top.r)} ${top.name}${b.god ? ` <span class="god-tag">${b.god}</span>` : ''}</span><span class="num">${yen(v)}</span></div>`;
+      }).join('') + `</div>`;
+    }
+  }
+  h += `<div class="sumline"><span>카드 가치 합계 <b>${yen(value)}</b></span><span>비용 <b>${yen(cost)}</b></span>
+    <span>손익 <b class="${value - cost >= 0 ? 'pos' : 'neg'}">${signed(value - cost)}</b></span></div>`;
+  $('#stage').innerHTML = h;
+}
+
+/* ---------- actions ---------- */
+function openPack(){
+  const s = state.set;
+  let cb = state.cur[s.id];
+  if (!cb || cb.i >= cb.box.packs.length) cb = state.cur[s.id] = {box: genBox(s), i: 0};
+  const pk = cb.box.packs[cb.i++];
+  record(s, [pk]);
+  renderPack(pk, cb.i, s.packs);
+  renderStats(); updateBoxBtn(); showStage();
+}
+function openBoxes(n){
+  const s = state.set, results = [];
+  const cb = state.cur[s.id];
+  if (cb && cb.i > 0 && cb.i < cb.box.packs.length){
+    const rest = cb.box.packs.slice(cb.i);
+    results.push({packs: rest, god: rest.some(p => p.god) ? cb.box.god : null});
+    record(s, rest);
+  }
+  state.cur[s.id] = null;
+  while (results.length < n){ const b = genBox(s); record(s, b.packs); results.push(b); }
+  renderBoxes(results, false);
+  renderStats(); updateBoxBtn(); showStage();
+}
+function hunt(){
+  const s = state.set;
+  const [id, name] = $('#target').value.split('|');
+  const target = s.pools[id].named.find(x => x[0] === name);
+  state.cur[s.id] = null;
+  const MAX = 5000;
+  let boxes = 0, found = false, value = 0, packs = 0;
+  const best = [];
+  while (boxes < MAX && !found){
+    const b = genBox(s); boxes++;
+    record(s, b.packs); packs += b.packs.length;
+    for (const pk of b.packs) for (const c of pk.cards){
+      value += c.price||0;
+      if (c.pool === id && c.name === name) found = true;
+      else if (tierOf(c) >= 8) best.push(c);
+    }
+  }
+  const cost = packs*packCost(s);
+  const bg = groupCards(best);
+  const tc = mk(id, s.pools[id], target[0], target[1]);
+  let h = stageHead(found ? `${boxes.toLocaleString()}박스 만에 등장` : `${MAX.toLocaleString()}박스 안에 못 뽑음`,
+    `${RAR[tc.r].label} ${name} 노리기 · ${packs.toLocaleString()}팩`);
+  h += `<div class="cards lg" style="max-width:420px">${cardHTML(tc, 0, 4)}</div>`;
+  if (bg.length) h += `<h4>그동안 나온 SAR 이상 (총 ${best.length}장, ${bg.length}종)</h4><div class="cards">${bg.slice(0,12).map((g,i)=>cardHTML(g.c, i*0.4 + 2, 8, g.n)).join('')}</div>`;
+  h += `<div class="sumline"><span>비용 <b>${yen(cost)}</b></span><span>뽑은 카드 가치 합계 <b>${yen(value)}</b></span>
+    <span>손익 <b class="${value - cost >= 0 ? 'pos' : 'neg'}">${signed(value - cost)}</b></span></div>`;
+  $('#stage').innerHTML = h;
+  renderStats(); updateBoxBtn(); showStage();
+}
+function showStage(){
+  const top = $('#stage').getBoundingClientRect().top;
+  if (top < 0 || top > innerHeight*0.75){
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $('.play').scrollIntoView({behavior: smooth ? 'smooth' : 'auto', block:'start'});
+  }
+}
+function updateBoxBtn(){
+  const s = state.set, cb = state.cur[s.id];
+  const rest = cb && cb.i > 0 && cb.i < cb.box.packs.length ? cb.box.packs.length - cb.i : 0;
+  $('#b-box').innerHTML = rest ? `남은 ${rest}팩 열기` : '박스 1개';
+  $('#b-pack').innerHTML = `팩 1개 열기 <small>${yen(packCost(s))}</small>`;
+}
+function selectSet(id){
+  state.set = SETS.find(s => s.id === id);
+  renderList(); renderHead(); renderRates(); renderTargets(); renderStats(); updateBoxBtn();
+  renderBoxes([genBox(state.set)], true);
+}
+function setBasis(b){
+  state.basis = b;
+  $('#basis-market').setAttribute('aria-pressed', b === 'market');
+  $('#basis-msrp').setAttribute('aria-pressed', b === 'msrp');
+  renderHead(); updateBoxBtn();
+}
+
+$('#b-pack').addEventListener('click', openPack);
+$('#b-box').addEventListener('click', () => openBoxes(1));
+$('#b-10').addEventListener('click', () => openBoxes(10));
+$('#b-100').addEventListener('click', () => openBoxes(100));
+$('#b-hunt').addEventListener('click', hunt);
+$('#b-reset').addEventListener('click', () => { delete state.stats[state.set.id]; state.cur[state.set.id] = null; renderStats(); updateBoxBtn(); });
+$('#basis-market').addEventListener('click', () => setBasis('market'));
+$('#basis-msrp').addEventListener('click', () => setBasis('msrp'));
+
+selectSet(SETS[0].id);
+</script>
+</body>
+</html>
